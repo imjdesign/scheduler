@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Plus, X, Bell, Check, Settings, ArrowLeft } from "lucide-react";
 import { loadDoc, saveDoc, subscribeDoc } from "./firebase.js";
+import { connect as gcalConnect, isConnected as gcalIsConnected, disconnect as gcalDisconnect, addEvent as gcalAdd, updateEvent as gcalUpdate, deleteEvent as gcalDelete } from "./gcal.js";
 
 const fmtKey = (d) => {
   const y = d.getFullYear();
@@ -55,8 +56,12 @@ export default function Scheduler() {
   const [blocksBack, setBlocksBack] = useState(1);
   const [blocksAhead, setBlocksAhead] = useState(3);
   const [showJump, setShowJump] = useState(false);
+  const [gcalLinked, setGcalLinked] = useState(false);
   const sentinelTopRef = useRef(null);
   const sentinelBottomRef = useRef(null);
+
+  // 초기 캘린더 연결 상태 확인
+  useEffect(() => { setGcalLinked(gcalIsConnected()); }, []);
 
   useEffect(() => {
     (async () => {
@@ -125,9 +130,75 @@ export default function Scheduler() {
   const projOf = (pid) => projects.find((p) => p.id === pid);
 
   const update = (key, items) => persist({ ...data, [key]: items });
-  const addRow = (key) => update(key, [...(data[key] || []), { id: uid(), text: "", done: false, alarm: "", proj: "" }]);
-  const editRow = (key, id, patch) => update(key, (data[key] || []).map((it) => (it.id === id ? { ...it, ...patch, _fired: false } : it)));
-  const delRow = (key, id) => update(key, (data[key] || []).filter((it) => it.id !== id));
+  const addRow = (key) => update(key, [...(data[key] || []), { id: uid(), text: "", done: false, alarm: "", proj: "", gcalId: "" }]);
+
+  // 캘린더 동기화 헬퍼 — 알림 시간/내용이 바뀐 줄에 대해 캘린더 일정을 자동 추가/수정/삭제
+  const syncGcal = async (key, before, after) => {
+    if (!gcalIsConnected()) return null; // 연결 안 됐으면 그냥 패스
+    const hadAlarm = !!(before && before.alarm);
+    const hasAlarm = !!(after.alarm);
+    try {
+      // 1) 새로 알림이 생긴 경우 → 추가
+      if (!hadAlarm && hasAlarm) {
+        const eventId = await gcalAdd({ dateKey: key, alarmHHMM: after.alarm, text: after.text });
+        return eventId;
+      }
+      // 2) 알림이 사라진 경우 → 삭제
+      if (hadAlarm && !hasAlarm && before.gcalId) {
+        await gcalDelete(before.gcalId);
+        return "";
+      }
+      // 3) 알림이 있고 내용/시간이 바뀐 경우 → 수정
+      if (hadAlarm && hasAlarm && before.gcalId) {
+        if (before.alarm !== after.alarm || before.text !== after.text) {
+          await gcalUpdate(before.gcalId, { dateKey: key, alarmHHMM: after.alarm, text: after.text });
+        }
+        return before.gcalId;
+      }
+      // 4) 변화 없음 (기존 gcalId 유지)
+      return before ? before.gcalId : "";
+    } catch (e) {
+      console.error("캘린더 동기화 실패", e);
+      return before ? before.gcalId : "";
+    }
+  };
+
+  const editRow = async (key, id, patch) => {
+    const items = data[key] || [];
+    const before = items.find((it) => it.id === id);
+    if (!before) return;
+    const after = { ...before, ...patch, _fired: false };
+    // 캘린더에 미리 보내고 그 결과(gcalId)를 함께 저장
+    const gcalId = await syncGcal(key, before, after);
+    after.gcalId = gcalId || "";
+    update(key, items.map((it) => (it.id === id ? after : it)));
+  };
+
+  const delRow = async (key, id) => {
+    const items = data[key] || [];
+    const before = items.find((it) => it.id === id);
+    if (before && before.gcalId && gcalIsConnected()) {
+      try { await gcalDelete(before.gcalId); } catch (e) { console.warn(e); }
+    }
+    update(key, items.filter((it) => it.id !== id));
+  };
+
+  // 캘린더 연결 / 해제
+  const linkGcal = async () => {
+    try {
+      await gcalConnect();
+      setGcalLinked(true);
+      alert("구글 캘린더와 연결되었어요. 이제 알림 시간을 입력하면 자동으로 캘린더에 일정이 추가됩니다.");
+    } catch (e) {
+      alert("연결에 실패했어요. 다시 시도해 주세요.");
+      console.error(e);
+    }
+  };
+  const unlinkGcal = () => {
+    if (!confirm("캘린더 연결을 해제할까요? 이미 추가된 일정은 캘린더에 남아있습니다.")) return;
+    gcalDisconnect();
+    setGcalLinked(false);
+  };
 
   const askNotif = () => {
     if ("Notification" in window && Notification.permission !== "granted") {
@@ -165,11 +236,25 @@ export default function Scheduler() {
         <div style={S.nav}>
           <button style={S.todayBtn} onClick={() => setBaseAnchor(startOfWeekMon(new Date()))}>오늘</button>
           <button style={S.navBtn} onClick={() => setShowJump(true)} title="날짜로 점프"><Calendar size={17} /></button>
+          <button style={{ ...S.navBtn, ...(gcalLinked ? S.navBtnOn : {}) }}
+            onClick={gcalLinked ? unlinkGcal : linkGcal}
+            title={gcalLinked ? "구글 캘린더 연결 해제" : "구글 캘린더 연결"}>
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
+              <circle cx="12" cy="15" r="2.5" fill="currentColor" stroke="none"/>
+            </svg>
+          </button>
           <button style={S.navBtn} onClick={() => setShowProj(true)} title="프로젝트 관리">
             <Settings size={17} />
           </button>
         </div>
       </header>
+
+      {!gcalLinked && (
+        <div style={S.banner}>
+          알림 시간을 폰 알림으로 받으려면 <button style={S.bannerBtn} onClick={linkGcal}>구글 캘린더 연결</button> 한 번만 눌러주세요.
+        </div>
+      )}
 
       <div style={S.legend}>
         {projects.map((p) => (
@@ -417,7 +502,10 @@ const S = {
   title: { fontFamily: "'Fraunces', serif", fontSize: 34, margin: "2px 0 0", color: "#2a2a2a", fontWeight: 600 },
   nav: { display: "flex", alignItems: "center", gap: 8 },
   navBtn: { width: 34, height: 34, borderRadius: 10, border: `1px solid ${BORDER}`, background: "#fff", color: "#666", cursor: "pointer", display: "grid", placeItems: "center" },
+  navBtnOn: { background: "#2a2a2a", color: "#fff", border: "1px solid #2a2a2a" },
   legend: { display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 16, padding: "10px 12px", background: "#fff", border: `1px solid ${BORDER}`, borderRadius: 12 },
+  banner: { display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8, padding: "10px 14px", background: "#fffaf2", border: "1px solid #f0d8b0", borderRadius: 10, marginBottom: 12, fontSize: 13, color: "#7a5a20" },
+  bannerBtn: { padding: "5px 12px", borderRadius: 8, border: "none", background: "#3a2f1e", color: "#fff", cursor: "pointer", fontSize: 12.5, fontFamily: "inherit" },
   legendItem: { display: "flex", alignItems: "center", gap: 5 },
   legendChip: { minWidth: 22, height: 20, padding: "0 5px", borderRadius: 5, fontSize: 11, fontWeight: 700, display: "grid", placeItems: "center" },
   legendName: { fontSize: 12, color: "#666" },
