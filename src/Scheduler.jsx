@@ -56,9 +56,12 @@ export default function Scheduler() {
   const [blocksBack, setBlocksBack] = useState(1);
   const [blocksAhead, setBlocksAhead] = useState(3);
   const [showJump, setShowJump] = useState(false);
+  const [viewMode, setViewMode] = useState("biweekly"); // "biweekly" | "monthly"
+  const [monthAnchor, setMonthAnchor] = useState(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); });
   const [gcalLinked, setGcalLinked] = useState(false);
   const sentinelTopRef = useRef(null);
   const sentinelBottomRef = useRef(null);
+  const monthScrollRef = useRef(null);
 
   // 초기 캘린더 연결 상태 확인
   useEffect(() => { setGcalLinked(gcalIsConnected()); }, []);
@@ -234,7 +237,17 @@ export default function Scheduler() {
           <h1 style={S.title}>스케줄러</h1>
         </div>
         <div style={S.nav}>
-          <button style={S.todayBtn} onClick={() => setBaseAnchor(startOfWeekMon(new Date()))}>오늘</button>
+          <div style={S.toggle}>
+            <button style={{ ...S.toggleBtn, ...(viewMode === "biweekly" ? S.toggleOn : {}) }}
+              onClick={() => setViewMode("biweekly")}>2주</button>
+            <button style={{ ...S.toggleBtn, ...(viewMode === "monthly" ? S.toggleOn : {}) }}
+              onClick={() => setViewMode("monthly")}>한 달</button>
+          </div>
+          {viewMode === "biweekly" ? (
+            <button style={S.todayBtn} onClick={() => setBaseAnchor(startOfWeekMon(new Date()))}>오늘</button>
+          ) : (
+            <button style={S.todayBtn} onClick={() => { const d = new Date(); setMonthAnchor(new Date(d.getFullYear(), d.getMonth(), 1)); }}>오늘</button>
+          )}
           <button style={S.navBtn} onClick={() => setShowJump(true)} title="날짜로 점프"><Calendar size={17} /></button>
           <button style={{ ...S.navBtn, ...(gcalLinked ? S.navBtnOn : {}) }}
             onClick={gcalLinked ? unlinkGcal : linkGcal}
@@ -265,52 +278,69 @@ export default function Scheduler() {
         ))}
       </div>
 
-      <div ref={sentinelTopRef} style={S.sentinel}>↑ 지난 일정 불러오는 중…</div>
+      {viewMode === "biweekly" && (
+        <>
+          <div ref={sentinelTopRef} style={S.sentinel}>↑ 지난 일정 불러오는 중…</div>
 
-      {blocks.map((blockStart) => {
-        const days = Array.from({ length: 14 }, (_, i) => addDays(blockStart, i));
-        const label = `${fmtKey(days[0]).replace(/-/g, ".").slice(2)} ~ ${fmtKey(days[13]).replace(/-/g, ".").slice(5)}`;
-        const isCurrent = fmtKey(blockStart) === fmtKey(baseAnchor);
-        return (
-          <section key={fmtKey(blockStart)} style={S.block}>
-            <div style={S.blockHead}>
-              <span style={S.blockLabel}>{label}</span>
-              {isCurrent && <span style={S.nowTag}>이번 2주</span>}
-            </div>
-            <div style={S.scroll} className="scroll">
-              <div style={S.cols}>
-                {days.map((d) => {
-                  const k = fmtKey(d);
-                  const items = data[k] || [];
-                  const isToday = k === todayKey;
-                  const wend = d.getDay() === 0 || d.getDay() === 6;
-                  return (
-                    <div key={k} style={{ ...S.col, ...(isToday ? S.colToday : {}) }}>
-                      <button className="dnum-btn" style={S.colHead} onClick={() => setDayView(k)} title="이 날 하루만 보기">
-                        <span style={{ ...S.dow, color: wend ? "#c0613f" : "#999" }}>{DOW[d.getDay()]}</span>
-                        <span style={{ ...S.dnum, ...(isToday ? { color: "#c0613f" } : {}) }}>{d.getDate()}</span>
-                        <span style={S.mon}>{d.getMonth() + 1}월</span>
-                      </button>
-                      <div style={S.colBody}>
-                        {items.map((it) => (
-                          <TaskRow key={it.id} it={it} k={k} projOf={projOf} projects={projects}
-                            pickerFor={pickerFor} setPickerFor={setPickerFor}
-                            editRow={editRow} delRow={delRow} askNotif={askNotif} />
-                        ))}
-                        <button style={S.add} onClick={() => addRow(k)}><Plus size={13} /> 추가</button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </section>
-        );
-      })}
+          {blocks.map((blockStart) => {
+            const days = Array.from({ length: 14 }, (_, i) => addDays(blockStart, i));
+            const label = `${fmtKey(days[0]).replace(/-/g, ".").slice(2)} ~ ${fmtKey(days[13]).replace(/-/g, ".").slice(5)}`;
+            const isCurrent = fmtKey(blockStart) === fmtKey(baseAnchor);
+            return (
+              <section key={fmtKey(blockStart)} style={S.block}>
+                <div style={S.blockHead}>
+                  <span style={S.blockLabel}>{label}</span>
+                  {isCurrent && <span style={S.nowTag}>이번 2주</span>}
+                </div>
+                <div style={S.scroll} className="scroll">
+                  <div style={S.cols}>
+                    {days.map((d) => {
+                      const k = fmtKey(d);
+                      const items = data[k] || [];
+                      const isToday = k === todayKey;
+                      const wend = d.getDay() === 0 || d.getDay() === 6;
+                      return (
+                        <div key={k} style={{ ...S.col, ...(isToday ? S.colToday : {}) }}>
+                          <button className="dnum-btn" style={S.colHead} onClick={() => setDayView(k)} title="이 날 하루만 보기">
+                            <span style={{ ...S.dow, color: wend ? "#c0613f" : "#999" }}>{DOW[d.getDay()]}</span>
+                            <span style={{ ...S.dnum, ...(isToday ? { color: "#c0613f" } : {}) }}>{d.getDate()}</span>
+                            <span style={S.mon}>{d.getMonth() + 1}월</span>
+                          </button>
+                          <div style={S.colBody}>
+                            {items.map((it) => (
+                              <TaskRow key={it.id} it={it} k={k} projOf={projOf} projects={projects}
+                                pickerFor={pickerFor} setPickerFor={setPickerFor}
+                                editRow={editRow} delRow={delRow} askNotif={askNotif} />
+                            ))}
+                            <button style={S.add} onClick={() => addRow(k)}><Plus size={13} /> 추가</button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </section>
+            );
+          })}
 
-      <div ref={sentinelBottomRef} style={S.sentinel}>↓ 다음 일정 불러오는 중…</div>
+          <div ref={sentinelBottomRef} style={S.sentinel}>↓ 다음 일정 불러오는 중…</div>
+        </>
+      )}
 
-      <p style={S.foot}>위/아래로 스크롤하면 자동으로 이어집니다. 각 2주 안에서는 좌우로 넘겨보세요. 날짜 숫자를 누르면 그 하루만 크게 볼 수 있어요.</p>
+      {viewMode === "monthly" && (
+        <MonthView
+          monthAnchor={monthAnchor}
+          setMonthAnchor={setMonthAnchor}
+          data={data}
+          projOf={projOf}
+          todayKey={todayKey}
+          onDayClick={(k) => setDayView(k)}
+        />
+      )}
+
+      <p style={S.foot}>{viewMode === "biweekly"
+        ? "위/아래로 스크롤하면 자동으로 이어집니다. 각 2주 안에서는 좌우로 넘겨보세요. 날짜 숫자를 누르면 그 하루만 크게 볼 수 있어요."
+        : "한 달이 한눈에 보입니다. 각 날짜를 누르면 그 하루만 크게 볼 수 있어요."}</p>
 
       {showJump && (
         <JumpModal currentAnchor={baseAnchor} onClose={() => setShowJump(false)}
@@ -388,6 +418,73 @@ function TaskRow({ it, k, projOf, projects, pickerFor, setPickerFor, editRow, de
         }}
       />
     </div>
+  );
+}
+
+function MonthView({ monthAnchor, setMonthAnchor, data, projOf, todayKey, onDayClick }) {
+  const year = monthAnchor.getFullYear();
+  const month = monthAnchor.getMonth(); // 0-11
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  const daysInMonth = lastDay.getDate();
+  // 월요일 시작 그리드: 1일이 무슨 요일인지로 앞 빈칸 계산
+  const startOffset = (firstDay.getDay() + 6) % 7; // 월=0, 화=1, ... 일=6
+  const totalCells = Math.ceil((startOffset + daysInMonth) / 7) * 7;
+
+  const cells = [];
+  for (let i = 0; i < totalCells; i++) {
+    const dayNum = i - startOffset + 1;
+    if (dayNum < 1 || dayNum > daysInMonth) {
+      cells.push(null);
+    } else {
+      cells.push(new Date(year, month, dayNum));
+    }
+  }
+
+  const goPrev = () => setMonthAnchor(new Date(year, month - 1, 1));
+  const goNext = () => setMonthAnchor(new Date(year, month + 1, 1));
+
+  return (
+    <section style={MV.wrap}>
+      <div style={MV.head}>
+        <button style={MV.navBtn} onClick={goPrev}>‹</button>
+        <h2 style={MV.title}>{year}년 {month + 1}월</h2>
+        <button style={MV.navBtn} onClick={goNext}>›</button>
+      </div>
+      <div style={MV.dowRow}>
+        {["월", "화", "수", "목", "금", "토", "일"].map((d, i) => (
+          <div key={d} style={{ ...MV.dowCell, color: i >= 5 ? "#c0613f" : "#999" }}>{d}</div>
+        ))}
+      </div>
+      <div style={MV.grid}>
+        {cells.map((d, i) => {
+          if (!d) return <div key={i} style={{ ...MV.cell, ...MV.cellEmpty }} />;
+          const k = fmtKey(d);
+          const items = (data[k] || []).filter((it) => it.text.trim());
+          const isToday = k === todayKey;
+          const wend = d.getDay() === 0 || d.getDay() === 6;
+          return (
+            <button key={k} style={{ ...MV.cell, ...(isToday ? MV.cellToday : {}) }} onClick={() => onDayClick(k)}>
+              <div style={{ ...MV.cellNum, color: isToday ? "#c0613f" : wend ? "#c0613f" : "#2a2a2a" }}>{d.getDate()}</div>
+              <div style={MV.cellTasks}>
+                {items.slice(0, 3).map((it) => {
+                  const p = projOf(it.proj);
+                  return (
+                    <div key={it.id} style={MV.taskMini}>
+                      {p && <span style={{ ...MV.miniChip, background: p.color, color: isLight(p.color) ? "#333" : "#fff" }}>{p.code}</span>}
+                      <span style={{ ...MV.miniText, ...(it.done ? { textDecoration: "line-through", color: "#bbb" } : {}) }}>
+                        {it.alarm ? `${it.alarm} ` : ""}{it.text}
+                      </span>
+                    </div>
+                  );
+                })}
+                {items.length > 3 && <div style={MV.more}>+{items.length - 3}개 더</div>}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 
@@ -591,4 +688,28 @@ const JM = {
   footer: { display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 14 },
   cancel: { padding: "9px 18px", borderRadius: 10, border: `1px solid ${BORDER}`, background: "#fff", color: "#444", cursor: "pointer", fontFamily: "inherit", fontSize: 14 },
   go: { padding: "9px 22px", borderRadius: 10, border: "none", background: "#2a2a2a", color: "#fff", cursor: "pointer", fontFamily: "inherit", fontSize: 14 },
+};
+
+// 토글 + 월 보기 스타일
+S.toggle = { display: "flex", border: `1px solid ${BORDER}`, borderRadius: 10, overflow: "hidden", marginRight: 4 };
+S.toggleBtn = { padding: "6px 12px", border: "none", background: "#fff", color: "#666", cursor: "pointer", fontSize: 13, fontFamily: "inherit" };
+S.toggleOn = { background: "#2a2a2a", color: "#fff" };
+
+const MV = {
+  wrap: { background: "#fff", border: `1px solid ${BORDER}`, borderRadius: 14, padding: "18px 18px 20px", marginBottom: 20 },
+  head: { display: "flex", alignItems: "center", justifyContent: "center", gap: 14, marginBottom: 14 },
+  navBtn: { width: 32, height: 32, borderRadius: 8, border: `1px solid ${BORDER}`, background: "#fff", color: "#666", cursor: "pointer", fontSize: 18, fontFamily: "inherit" },
+  title: { fontFamily: "'Fraunces', serif", fontSize: 22, margin: 0, color: "#2a2a2a", minWidth: 140, textAlign: "center" },
+  dowRow: { display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4, marginBottom: 6 },
+  dowCell: { textAlign: "center", fontSize: 11, padding: "4px 0" },
+  grid: { display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4 },
+  cell: { minHeight: 96, padding: "6px 7px", border: `1px solid ${BORDER}`, borderRadius: 8, background: "#fff", cursor: "pointer", textAlign: "left", fontFamily: "inherit", display: "flex", flexDirection: "column", gap: 4, overflow: "hidden" },
+  cellEmpty: { background: "#fafafa", cursor: "default", border: "1px solid #eee" },
+  cellToday: { border: "1.5px solid #c0613f", background: "#fff8f4" },
+  cellNum: { fontFamily: "'Fraunces', serif", fontSize: 15, fontWeight: 600, lineHeight: 1 },
+  cellTasks: { display: "flex", flexDirection: "column", gap: 2, overflow: "hidden" },
+  taskMini: { display: "flex", alignItems: "center", gap: 3, fontSize: 11, lineHeight: 1.2, overflow: "hidden" },
+  miniChip: { minWidth: 16, height: 14, padding: "0 3px", borderRadius: 3, fontSize: 9, fontWeight: 700, display: "grid", placeItems: "center", flexShrink: 0 },
+  miniText: { color: "#3a3a3a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
+  more: { fontSize: 10, color: "#999", marginTop: 1 },
 };
