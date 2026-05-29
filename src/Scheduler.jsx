@@ -452,17 +452,25 @@ function TaskRow({ it, k, projOf, projects, pickerFor, setPickerFor, editRow, de
         <button onClick={() => editRow(k, it.id, { done: !it.done })} style={{ ...S.check, ...(it.done ? S.checkOn : {}) }}>
           {it.done && <Check size={11} />}
         </button>
-        <label style={{ ...S.alarm, ...(it.alarm ? S.alarmOn : {}) }}>
-          <Bell size={11} />
-          <input type="time" value={it.alarm || ""} style={S.time}
-            onChange={(e) => { editRow(k, it.id, { alarm: e.target.value }); askNotif(); }} />
-          {it.alarm && (
+        {it.alarm ? (
+          <label style={{ ...S.alarm, ...S.alarmOn }}>
+            <Bell size={11} />
+            <input type="time" value={it.alarm} style={S.time}
+              onChange={(e) => { editRow(k, it.id, { alarm: e.target.value }); askNotif(); }} />
             <span role="button" tabIndex={0}
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); editRow(k, it.id, { alarm: "" }); }}
               onMouseDown={(e) => e.preventDefault()}
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); editRow(k, it.id, { alarm: "" }); }}
               style={S.alarmClear} title="알람 시간 지우기"><X size={10} /></span>
-          )}
-        </label>
+          </label>
+        ) : (
+          <label style={S.alarmEmpty} title="알람 시간 설정">
+            <Bell size={11} />
+            <span style={{ fontSize: 11, color: "#bbb" }}>시간</span>
+            <input type="time" value=""
+              onChange={(e) => { if (e.target.value) { editRow(k, it.id, { alarm: e.target.value }); askNotif(); } }}
+              style={{ position: "absolute", opacity: 0, width: "100%", height: "100%", left: 0, top: 0, cursor: "pointer" }} />
+          </label>
+        )}
         <button style={S.del} onClick={() => delRow(k, it.id)}><X size={13} /></button>
       </div>
 
@@ -712,6 +720,7 @@ const S = {
   check: { width: 20, height: 20, borderRadius: 0, border: `2px solid ${BORDER}`, background: "#fff", cursor: "pointer", display: "grid", placeItems: "center", color: "#fff", flexShrink: 0 },
   checkOn: { background: "#7a9a5b", border: "2px solid #7a9a5b" },
   alarm: { display: "inline-flex", alignItems: "center", gap: 2, marginLeft: "auto", padding: "2px 5px", borderRadius: 0, border: `1px solid ${BORDER}`, background: "#fff", color: "#bbb", flexShrink: 0 },
+  alarmEmpty: { position: "relative", display: "inline-flex", alignItems: "center", gap: 4, marginLeft: "auto", padding: "2px 7px", borderRadius: 0, border: `1px dashed ${BORDER}`, background: "transparent", color: "#bbb", cursor: "pointer", fontFamily: "inherit", flexShrink: 0 },
   alarmClear: { display: "inline-grid", placeItems: "center", width: 14, height: 14, marginLeft: 2, color: "#bbb", cursor: "pointer", borderRadius: 0 },
   alarmOn: { color: "#2563eb", borderColor: "#9bb6e8", background: "#fff" },
   time: { border: "none", background: "transparent", fontSize: 12, color: "inherit", outline: "none", width: 78, fontFamily: "inherit" },
