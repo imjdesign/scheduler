@@ -221,10 +221,11 @@ export default function Scheduler() {
   return (
     <div style={S.wrap}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Gowun+Dodum&family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap');
+        @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         * { box-sizing: border-box; }
-        .scroll::-webkit-scrollbar { height: 9px; }
-        .scroll::-webkit-scrollbar-thumb { background: #d0d0d0; border-radius: 5px; }
+        .scroll { scrollbar-width: none; -ms-overflow-style: none; }
+        .scroll::-webkit-scrollbar { display: none; height: 0; width: 0; }
         .row-in { animation: ri .18s ease; }
         @keyframes ri { from {opacity:0;} to {opacity:1;} }
         input::placeholder, textarea::placeholder { color: #bbb; }
@@ -233,8 +234,7 @@ export default function Scheduler() {
 
       <header style={S.header}>
         <div>
-          <div style={S.kicker}>TWO·WEEK</div>
-          <h1 style={S.title}>스케줄러</h1>
+          <h1 style={S.title}>Daily Prime</h1>
         </div>
         <div style={S.nav}>
           <div style={S.toggle}>
@@ -302,8 +302,8 @@ export default function Scheduler() {
                       return (
                         <div key={k} style={{ ...S.col, ...(isToday ? S.colToday : {}) }}>
                           <button className="dnum-btn" style={S.colHead} onClick={() => setDayView(k)} title="이 날 하루만 보기">
-                            <span style={{ ...S.dow, color: wend ? "#c0613f" : "#999" }}>{DOW[d.getDay()]}</span>
-                            <span style={{ ...S.dnum, ...(isToday ? { color: "#c0613f" } : {}) }}>{d.getDate()}</span>
+                            <span style={{ ...S.dow, color: wend ? "#c0392b" : "#999" }}>{DOW[d.getDay()]}</span>
+                            <span style={{ ...S.dnum, ...(isToday ? { color: "#2563eb" } : {}) }}>{d.getDate()}</span>
                             <span style={S.mon}>{d.getMonth() + 1}월</span>
                           </button>
                           <div style={S.colBody}>
@@ -453,7 +453,7 @@ function MonthView({ monthAnchor, setMonthAnchor, data, projOf, todayKey, onDayC
       </div>
       <div style={MV.dowRow}>
         {["월", "화", "수", "목", "금", "토", "일"].map((d, i) => (
-          <div key={d} style={{ ...MV.dowCell, color: i >= 5 ? "#c0613f" : "#999" }}>{d}</div>
+          <div key={d} style={{ ...MV.dowCell, color: i >= 5 ? "#c0392b" : "#999" }}>{d}</div>
         ))}
       </div>
       <div style={MV.grid}>
@@ -465,7 +465,7 @@ function MonthView({ monthAnchor, setMonthAnchor, data, projOf, todayKey, onDayC
           const wend = d.getDay() === 0 || d.getDay() === 6;
           return (
             <button key={k} style={{ ...MV.cell, ...(isToday ? MV.cellToday : {}) }} onClick={() => onDayClick(k)}>
-              <div style={{ ...MV.cellNum, color: isToday ? "#c0613f" : wend ? "#c0613f" : "#2a2a2a" }}>{d.getDate()}</div>
+              <div style={{ ...MV.cellNum, color: isToday ? "#2563eb" : wend ? "#c0392b" : "#2a2a2a" }}>{d.getDate()}</div>
               <div style={MV.cellTasks}>
                 {items.slice(0, 3).map((it) => {
                   const p = projOf(it.proj);
@@ -593,123 +593,123 @@ function ProjectManager({ projects, setProjects, onClose }) {
 }
 
 const S = {
-  wrap: { maxWidth: 1100, margin: "0 auto", padding: "26px 18px 44px", fontFamily: "'Gowun Dodum', sans-serif", color: "#3a3a3a", background: "#fff", minHeight: "100%" },
+  wrap: { maxWidth: "none", margin: 0, padding: "26px 28px 44px", fontFamily: "'Inter', 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif", color: "#3a3a3a", background: "#fff", minHeight: "100%" },
   header: { display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: 12, marginBottom: 14 },
   kicker: { fontSize: 12, letterSpacing: 4, color: "#999", fontWeight: 600 },
-  title: { fontFamily: "'Fraunces', serif", fontSize: 34, margin: "2px 0 0", color: "#2a2a2a", fontWeight: 600 },
+  title: { fontFamily: "'Inter', 'Pretendard', sans-serif", fontSize: 34, margin: "2px 0 0", color: "#2a2a2a", fontWeight: 600 },
   nav: { display: "flex", alignItems: "center", gap: 8 },
-  navBtn: { width: 34, height: 34, borderRadius: 10, border: `1px solid ${BORDER}`, background: "#fff", color: "#666", cursor: "pointer", display: "grid", placeItems: "center" },
+  navBtn: { width: 34, height: 34, borderRadius: 0, border: `1px solid ${BORDER}`, background: "#fff", color: "#666", cursor: "pointer", display: "grid", placeItems: "center" },
   navBtnOn: { background: "#2a2a2a", color: "#fff", border: "1px solid #2a2a2a" },
-  legend: { display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 16, padding: "10px 12px", background: "#fff", border: `1px solid ${BORDER}`, borderRadius: 12 },
-  banner: { display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8, padding: "10px 14px", background: "#fffaf2", border: "1px solid #f0d8b0", borderRadius: 10, marginBottom: 12, fontSize: 13, color: "#7a5a20" },
-  bannerBtn: { padding: "5px 12px", borderRadius: 8, border: "none", background: "#3a2f1e", color: "#fff", cursor: "pointer", fontSize: 12.5, fontFamily: "inherit" },
+  legend: { display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 16, padding: "10px 12px", background: "#fff", border: `1px solid ${BORDER}`, borderRadius: 0 },
+  banner: { display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8, padding: "10px 14px", background: "#fffaf2", border: "1px solid #f0d8b0", borderRadius: 0, marginBottom: 12, fontSize: 13, color: "#7a5a20" },
+  bannerBtn: { padding: "5px 12px", borderRadius: 0, border: "none", background: "#3a2f1e", color: "#fff", cursor: "pointer", fontSize: 12.5, fontFamily: "inherit" },
   legendItem: { display: "flex", alignItems: "center", gap: 5 },
-  legendChip: { minWidth: 22, height: 20, padding: "0 5px", borderRadius: 5, fontSize: 11, fontWeight: 700, display: "grid", placeItems: "center" },
+  legendChip: { minWidth: 22, height: 20, padding: "0 5px", borderRadius: 0, fontSize: 11, fontWeight: 700, display: "grid", placeItems: "center" },
   legendName: { fontSize: 12, color: "#666" },
-  todayBtn: { padding: "7px 14px", borderRadius: 10, border: `1px solid ${BORDER}`, background: "#fff", color: "#444", cursor: "pointer", fontSize: 13, fontFamily: "inherit" },
+  todayBtn: { padding: "7px 14px", borderRadius: 0, border: `1px solid ${BORDER}`, background: "#fff", color: "#444", cursor: "pointer", fontSize: 13, fontFamily: "inherit" },
   sentinel: { textAlign: "center", padding: "12px 0", fontSize: 11.5, color: "#bbb", fontFamily: "inherit" },
   block: { marginBottom: 26 },
   blockHead: { display: "flex", alignItems: "center", gap: 10, marginBottom: 8, paddingBottom: 6, borderBottom: `1px solid ${BORDER}` },
-  blockLabel: { fontFamily: "'Fraunces', serif", fontSize: 16, color: "#555" },
-  nowTag: { fontSize: 11, background: "#2a2a2a", color: "#fff", padding: "3px 9px", borderRadius: 7 },
-  scroll: { overflowX: "auto", paddingBottom: 8 },
+  blockLabel: { fontFamily: "'Inter', 'Pretendard', sans-serif", fontSize: 12, fontWeight: 700, color: "#555", letterSpacing: "-0.01em" },
+  nowTag: { fontSize: 11, background: "#2a2a2a", color: "#fff", padding: "3px 9px", borderRadius: 0 },
+  scroll: { overflowX: "auto", paddingBottom: 0 },
   cols: { display: "flex", gap: 9, minWidth: "min-content" },
-  col: { width: 230, flexShrink: 0, background: "#fff", border: `1px solid ${BORDER}`, borderRadius: 13, overflow: "hidden", display: "flex", flexDirection: "column" },
-  colToday: { border: "1.5px solid #c0613f" },
+  col: { width: 230, flexShrink: 0, background: "#fff", border: `1px solid ${BORDER}`, borderRadius: 0, overflow: "hidden", display: "flex", flexDirection: "column" },
+  colToday: { border: "1.5px solid #2563eb" },
   colHead: { display: "flex", alignItems: "baseline", gap: 5, padding: "8px 10px", background: "#fff", borderBottomWidth: 1, borderBottomStyle: "solid", borderBottomColor: BORDER, borderTop: "none", borderLeft: "none", borderRight: "none", cursor: "pointer", width: "100%", fontFamily: "inherit", textAlign: "left" },
   dow: { fontSize: 11.5 },
-  dnum: { fontFamily: "'Fraunces', serif", fontSize: 18, fontWeight: 600, color: "#2a2a2a" },
+  dnum: { fontFamily: "'Inter', 'Pretendard', sans-serif", fontSize: 19, fontWeight: 700, letterSpacing: "-0.01em", color: "#2a2a2a" },
   mon: { fontSize: 10, color: "#aaa" },
   colBody: { padding: 8, display: "flex", flexDirection: "column", gap: 7, minHeight: 110 },
-  task: { position: "relative", background: "#fff", border: `1px solid ${BORDER}`, borderRadius: 9, padding: "6px 7px" },
-  taskBig: { padding: "10px 12px", borderRadius: 11 },
+  task: { position: "relative", background: "#fff", border: `1px solid ${BORDER}`, borderRadius: 0, padding: "6px 7px" },
+  taskBig: { padding: "10px 12px", borderRadius: 0 },
   taskTop: { display: "flex", alignItems: "center", gap: 5, marginBottom: 4 },
-  projChip: { minWidth: 22, height: 20, padding: "0 5px", borderRadius: 5, fontSize: 11, fontWeight: 700, cursor: "pointer", display: "grid", placeItems: "center", flexShrink: 0 },
-  check: { width: 20, height: 20, borderRadius: 5, border: `2px solid ${BORDER}`, background: "#fff", cursor: "pointer", display: "grid", placeItems: "center", color: "#fff", flexShrink: 0 },
+  projChip: { minWidth: 22, height: 20, padding: "0 5px", borderRadius: 0, fontSize: 11, fontWeight: 700, cursor: "pointer", display: "grid", placeItems: "center", flexShrink: 0 },
+  check: { width: 20, height: 20, borderRadius: 0, border: `2px solid ${BORDER}`, background: "#fff", cursor: "pointer", display: "grid", placeItems: "center", color: "#fff", flexShrink: 0 },
   checkOn: { background: "#7a9a5b", border: "2px solid #7a9a5b" },
-  alarm: { display: "inline-flex", alignItems: "center", gap: 2, marginLeft: "auto", padding: "2px 5px", borderRadius: 6, border: `1px solid ${BORDER}`, background: "#fff", color: "#bbb", flexShrink: 0 },
-  alarmOn: { color: "#c0613f", borderColor: "#e7b79c", background: "#fff" },
+  alarm: { display: "inline-flex", alignItems: "center", gap: 2, marginLeft: "auto", padding: "2px 5px", borderRadius: 0, border: `1px solid ${BORDER}`, background: "#fff", color: "#bbb", flexShrink: 0 },
+  alarmOn: { color: "#2563eb", borderColor: "#9bb6e8", background: "#fff" },
   time: { border: "none", background: "transparent", fontSize: 12, color: "inherit", outline: "none", width: 78, fontFamily: "inherit" },
-  del: { width: 20, height: 20, borderRadius: 5, border: "none", background: "transparent", color: "#ccc", cursor: "pointer", display: "grid", placeItems: "center", flexShrink: 0 },
-  picker: { position: "absolute", zIndex: 20, top: 30, left: 6, background: "#fff", border: `1px solid ${BORDER}`, borderRadius: 9, padding: 7, display: "flex", flexWrap: "wrap", gap: 5, width: 150, boxShadow: "0 8px 22px rgba(0,0,0,.12)" },
-  pickItem: { minWidth: 26, height: 24, padding: "0 6px", borderRadius: 5, fontSize: 11, fontWeight: 700, border: "none", cursor: "pointer" },
-  pickClear: { width: "100%", padding: "5px", borderRadius: 5, border: `1px dashed ${BORDER}`, background: "transparent", color: "#999", cursor: "pointer", fontSize: 11, fontFamily: "inherit" },
+  del: { width: 20, height: 20, borderRadius: 0, border: "none", background: "transparent", color: "#ccc", cursor: "pointer", display: "grid", placeItems: "center", flexShrink: 0 },
+  picker: { position: "absolute", zIndex: 20, top: 30, left: 6, background: "#fff", border: `1px solid ${BORDER}`, borderRadius: 0, padding: 7, display: "flex", flexWrap: "wrap", gap: 5, width: 150, boxShadow: "0 8px 22px rgba(0,0,0,.12)" },
+  pickItem: { minWidth: 26, height: 24, padding: "0 6px", borderRadius: 0, fontSize: 11, fontWeight: 700, border: "none", cursor: "pointer" },
+  pickClear: { width: "100%", padding: "5px", borderRadius: 0, border: `1px dashed ${BORDER}`, background: "transparent", color: "#999", cursor: "pointer", fontSize: 11, fontFamily: "inherit" },
   text: { width: "100%", border: "none", background: "transparent", fontSize: 13.5, color: "#3a3a3a", outline: "none", fontFamily: "inherit", resize: "none", lineHeight: 1.35, overflow: "hidden", whiteSpace: "pre-wrap", wordBreak: "break-word" },
   textDone: { textDecoration: "line-through", color: "#bbb" },
-  add: { alignSelf: "stretch", padding: "5px", borderRadius: 8, border: `1.5px dashed ${BORDER}`, background: "transparent", color: "#999", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 4, fontSize: 12, fontFamily: "inherit" },
+  add: { alignSelf: "stretch", padding: "5px", borderRadius: 0, border: `1.5px dashed ${BORDER}`, background: "transparent", color: "#999", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 4, fontSize: 12, fontFamily: "inherit" },
   foot: { marginTop: 16, fontSize: 12.5, color: "#aaa", lineHeight: 1.6, textAlign: "center" },
 };
 
 const DV = {
   overlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,.35)", display: "grid", placeItems: "center", zIndex: 90, padding: 16 },
-  panel: { width: "100%", maxWidth: 540, maxHeight: "88vh", overflow: "auto", background: "#fff", borderRadius: 18, border: `1px solid ${BORDER}`, fontFamily: "'Gowun Dodum', sans-serif" },
+  panel: { width: "100%", maxWidth: 540, maxHeight: "88vh", overflow: "auto", background: "#fff", borderRadius: 0, border: `1px solid ${BORDER}`, fontFamily: "'Inter', 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif" },
   head: { display: "flex", alignItems: "center", gap: 14, padding: "18px 20px", borderBottom: `1px solid ${BORDER}`, position: "sticky", top: 0, background: "#fff", zIndex: 2 },
-  back: { display: "flex", alignItems: "center", gap: 5, padding: "7px 12px", borderRadius: 9, border: `1px solid ${BORDER}`, background: "#fff", color: "#555", cursor: "pointer", fontSize: 13, fontFamily: "inherit", flexShrink: 0 },
+  back: { display: "flex", alignItems: "center", gap: 5, padding: "7px 12px", borderRadius: 0, border: `1px solid ${BORDER}`, background: "#fff", color: "#555", cursor: "pointer", fontSize: 13, fontFamily: "inherit", flexShrink: 0 },
   dateBig: { display: "flex", alignItems: "baseline", gap: 8 },
-  dvNum: { fontFamily: "'Fraunces', serif", fontSize: 24, fontWeight: 600, color: "#2a2a2a" },
+  dvNum: { fontFamily: "'Inter', 'Pretendard', sans-serif", fontSize: 26, fontWeight: 700, letterSpacing: "-0.01em", color: "#2a2a2a" },
   dvDow: { fontSize: 14, color: "#999" },
   body: { padding: "16px 20px 22px", display: "flex", flexDirection: "column", gap: 9 },
   empty: { textAlign: "center", color: "#bbb", padding: "20px 0", fontSize: 14 },
-  add: { marginTop: 4, padding: "11px", borderRadius: 11, border: `1.5px dashed ${BORDER}`, background: "transparent", color: "#999", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, fontSize: 14, fontFamily: "inherit" },
+  add: { marginTop: 4, padding: "11px", borderRadius: 0, border: `1.5px dashed ${BORDER}`, background: "transparent", color: "#999", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, fontSize: 14, fontFamily: "inherit" },
 };
 
 const MS = {
   overlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,.35)", display: "grid", placeItems: "center", zIndex: 100, padding: 16 },
-  modal: { width: "100%", maxWidth: 560, maxHeight: "85vh", overflow: "auto", background: "#fff", borderRadius: 18, padding: "22px 22px 18px", fontFamily: "'Gowun Dodum', sans-serif", border: `1px solid ${BORDER}` },
+  modal: { width: "100%", maxWidth: 560, maxHeight: "85vh", overflow: "auto", background: "#fff", borderRadius: 0, padding: "22px 22px 18px", fontFamily: "'Inter', 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif", border: `1px solid ${BORDER}` },
   headM: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 },
-  title: { fontFamily: "'Fraunces', serif", fontSize: 22, margin: 0, color: "#2a2a2a" },
+  title: { fontFamily: "'Inter', 'Pretendard', sans-serif", fontSize: 22, margin: 0, color: "#2a2a2a" },
   x: { border: "none", background: "transparent", color: "#999", cursor: "pointer" },
   hint: { fontSize: 12.5, color: "#aaa", margin: "0 0 16px", lineHeight: 1.5 },
   rows: { display: "flex", flexDirection: "column", gap: 10 },
   row: { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" },
-  codeIn: { width: 52, height: 34, borderRadius: 8, border: "none", textAlign: "center", fontSize: 13, fontWeight: 700, fontFamily: "inherit", outline: "none" },
-  nameIn: { flex: 1, minWidth: 110, height: 34, borderRadius: 8, border: `1px solid ${BORDER}`, padding: "0 10px", fontSize: 14, fontFamily: "inherit", outline: "none", background: "#fff" },
+  codeIn: { width: 52, height: 34, borderRadius: 0, border: "none", textAlign: "center", fontSize: 13, fontWeight: 700, fontFamily: "inherit", outline: "none" },
+  nameIn: { flex: 1, minWidth: 110, height: 34, borderRadius: 0, border: `1px solid ${BORDER}`, padding: "0 10px", fontSize: 14, fontFamily: "inherit", outline: "none", background: "#fff" },
   swatches: { display: "flex", gap: 3, flexWrap: "wrap", maxWidth: 200 },
-  sw: { width: 18, height: 18, borderRadius: 4, border: "none", cursor: "pointer", padding: 0 },
-  del: { width: 30, height: 30, borderRadius: 7, border: `1px solid ${BORDER}`, background: "#fff", color: "#999", cursor: "pointer", display: "grid", placeItems: "center" },
-  addP: { marginTop: 14, width: "100%", padding: "10px", borderRadius: 10, border: `1.5px dashed ${BORDER}`, background: "transparent", color: "#999", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 5, fontSize: 13.5, fontFamily: "inherit" },
+  sw: { width: 18, height: 18, borderRadius: 0, border: "none", cursor: "pointer", padding: 0 },
+  del: { width: 30, height: 30, borderRadius: 0, border: `1px solid ${BORDER}`, background: "#fff", color: "#999", cursor: "pointer", display: "grid", placeItems: "center" },
+  addP: { marginTop: 14, width: "100%", padding: "10px", borderRadius: 0, border: `1.5px dashed ${BORDER}`, background: "transparent", color: "#999", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 5, fontSize: 13.5, fontFamily: "inherit" },
   footer: { display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 18 },
-  cancel: { padding: "9px 18px", borderRadius: 10, border: `1px solid ${BORDER}`, background: "#fff", color: "#444", cursor: "pointer", fontFamily: "inherit", fontSize: 14 },
-  save: { padding: "9px 20px", borderRadius: 10, border: "none", background: "#2a2a2a", color: "#fff", cursor: "pointer", fontFamily: "inherit", fontSize: 14 },
+  cancel: { padding: "9px 18px", borderRadius: 0, border: `1px solid ${BORDER}`, background: "#fff", color: "#444", cursor: "pointer", fontFamily: "inherit", fontSize: 14 },
+  save: { padding: "9px 20px", borderRadius: 0, border: "none", background: "#2a2a2a", color: "#fff", cursor: "pointer", fontFamily: "inherit", fontSize: 14 },
 };
 
 const JM = {
   overlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,.35)", display: "grid", placeItems: "center", zIndex: 95, padding: 16 },
-  modal: { width: "100%", maxWidth: 380, background: "#fff", borderRadius: 18, padding: "22px 22px 18px", fontFamily: "'Gowun Dodum', sans-serif", border: `1px solid ${BORDER}` },
+  modal: { width: "100%", maxWidth: 380, background: "#fff", borderRadius: 0, padding: "22px 22px 18px", fontFamily: "'Inter', 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif", border: `1px solid ${BORDER}` },
   head: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 },
-  title: { fontFamily: "'Fraunces', serif", fontSize: 20, margin: 0, color: "#2a2a2a" },
+  title: { fontFamily: "'Inter', 'Pretendard', sans-serif", fontSize: 20, margin: 0, color: "#2a2a2a" },
   x: { border: "none", background: "transparent", color: "#999", cursor: "pointer" },
   row: { marginBottom: 14 },
   label: { display: "block", fontSize: 12, color: "#888", marginBottom: 6 },
-  sel: { width: "100%", height: 36, borderRadius: 9, border: `1px solid ${BORDER}`, padding: "0 10px", background: "#fff", fontFamily: "inherit", fontSize: 14, color: "#333" },
+  sel: { width: "100%", height: 36, borderRadius: 0, border: `1px solid ${BORDER}`, padding: "0 10px", background: "#fff", fontFamily: "inherit", fontSize: 14, color: "#333" },
   months: { display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6 },
-  mBtn: { padding: "8px 0", borderRadius: 8, border: `1px solid ${BORDER}`, background: "#fff", color: "#555", cursor: "pointer", fontSize: 13, fontFamily: "inherit" },
+  mBtn: { padding: "8px 0", borderRadius: 0, border: `1px solid ${BORDER}`, background: "#fff", color: "#555", cursor: "pointer", fontSize: 13, fontFamily: "inherit" },
   mBtnOn: { background: "#2a2a2a", color: "#fff", border: "1px solid #2a2a2a" },
   footer: { display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 14 },
-  cancel: { padding: "9px 18px", borderRadius: 10, border: `1px solid ${BORDER}`, background: "#fff", color: "#444", cursor: "pointer", fontFamily: "inherit", fontSize: 14 },
-  go: { padding: "9px 22px", borderRadius: 10, border: "none", background: "#2a2a2a", color: "#fff", cursor: "pointer", fontFamily: "inherit", fontSize: 14 },
+  cancel: { padding: "9px 18px", borderRadius: 0, border: `1px solid ${BORDER}`, background: "#fff", color: "#444", cursor: "pointer", fontFamily: "inherit", fontSize: 14 },
+  go: { padding: "9px 22px", borderRadius: 0, border: "none", background: "#2a2a2a", color: "#fff", cursor: "pointer", fontFamily: "inherit", fontSize: 14 },
 };
 
 // 토글 + 월 보기 스타일
-S.toggle = { display: "flex", border: `1px solid ${BORDER}`, borderRadius: 10, overflow: "hidden", marginRight: 4 };
+S.toggle = { display: "flex", border: `1px solid ${BORDER}`, borderRadius: 0, overflow: "hidden", marginRight: 4 };
 S.toggleBtn = { padding: "6px 12px", border: "none", background: "#fff", color: "#666", cursor: "pointer", fontSize: 13, fontFamily: "inherit" };
 S.toggleOn = { background: "#2a2a2a", color: "#fff" };
 
 const MV = {
-  wrap: { background: "#fff", border: `1px solid ${BORDER}`, borderRadius: 14, padding: "18px 18px 20px", marginBottom: 20 },
+  wrap: { background: "#fff", border: `1px solid ${BORDER}`, borderRadius: 0, padding: "18px 18px 20px", marginBottom: 20 },
   head: { display: "flex", alignItems: "center", justifyContent: "center", gap: 14, marginBottom: 14 },
-  navBtn: { width: 32, height: 32, borderRadius: 8, border: `1px solid ${BORDER}`, background: "#fff", color: "#666", cursor: "pointer", fontSize: 18, fontFamily: "inherit" },
-  title: { fontFamily: "'Fraunces', serif", fontSize: 22, margin: 0, color: "#2a2a2a", minWidth: 140, textAlign: "center" },
+  navBtn: { width: 32, height: 32, borderRadius: 0, border: `1px solid ${BORDER}`, background: "#fff", color: "#666", cursor: "pointer", fontSize: 18, fontFamily: "inherit" },
+  title: { fontFamily: "'Inter', 'Pretendard', sans-serif", fontSize: 22, margin: 0, color: "#2a2a2a", minWidth: 140, textAlign: "center" },
   dowRow: { display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4, marginBottom: 6 },
   dowCell: { textAlign: "center", fontSize: 11, padding: "4px 0" },
   grid: { display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4 },
-  cell: { minHeight: 96, padding: "6px 7px", border: `1px solid ${BORDER}`, borderRadius: 8, background: "#fff", cursor: "pointer", textAlign: "left", fontFamily: "inherit", display: "flex", flexDirection: "column", gap: 4, overflow: "hidden" },
+  cell: { minHeight: 96, padding: "6px 7px", border: `1px solid ${BORDER}`, borderRadius: 0, background: "#fff", cursor: "pointer", textAlign: "left", fontFamily: "inherit", display: "flex", flexDirection: "column", gap: 4, overflow: "hidden" },
   cellEmpty: { background: "#fafafa", cursor: "default", border: "1px solid #eee" },
-  cellToday: { border: "1.5px solid #c0613f", background: "#fff8f4" },
-  cellNum: { fontFamily: "'Fraunces', serif", fontSize: 15, fontWeight: 600, lineHeight: 1 },
+  cellToday: { border: "1.5px solid #2563eb", background: "#eff5ff" },
+  cellNum: { fontFamily: "'Inter', 'Pretendard', sans-serif", fontSize: 16, fontWeight: 700, letterSpacing: "-0.01em", lineHeight: 1 },
   cellTasks: { display: "flex", flexDirection: "column", gap: 2, overflow: "hidden" },
   taskMini: { display: "flex", alignItems: "center", gap: 3, fontSize: 11, lineHeight: 1.2, overflow: "hidden" },
-  miniChip: { minWidth: 16, height: 14, padding: "0 3px", borderRadius: 3, fontSize: 9, fontWeight: 700, display: "grid", placeItems: "center", flexShrink: 0 },
+  miniChip: { minWidth: 16, height: 14, padding: "0 3px", borderRadius: 0, fontSize: 9, fontWeight: 700, display: "grid", placeItems: "center", flexShrink: 0 },
   miniText: { color: "#3a3a3a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
   more: { fontSize: 10, color: "#999", marginTop: 1 },
 };
