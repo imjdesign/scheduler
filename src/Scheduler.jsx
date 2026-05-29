@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Plus, X, Bell, Check, Settings, ArrowLeft } from "lucide-react";
 
 const fmtKey = (d) => {
@@ -36,10 +36,14 @@ const isLight = (hex) => {
 };
 
 const BORDER = "#dcdcdc";
-const BLOCKS_AHEAD = 8;
+const Calendar = ({ size = 17 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
+  </svg>
+);
 
 export default function Scheduler() {
-  const [baseAnchor] = useState(() => startOfWeekMon(new Date()));
+  const [baseAnchor, setBaseAnchor] = useState(() => startOfWeekMon(new Date()));
   const [data, setData] = useState({});
   const [projects, setProjects] = useState(DEFAULT_PROJECTS);
   const [loaded, setLoaded] = useState(false);
@@ -48,6 +52,10 @@ export default function Scheduler() {
   const [showProj, setShowProj] = useState(false);
   const [dayView, setDayView] = useState(null);
   const [blocksBack, setBlocksBack] = useState(1);
+  const [blocksAhead, setBlocksAhead] = useState(3);
+  const [showJump, setShowJump] = useState(false);
+  const sentinelTopRef = useRef(null);
+  const sentinelBottomRef = useRef(null);
 
   useEffect(() => {
     (async () => {
@@ -91,6 +99,23 @@ export default function Scheduler() {
     });
   }, [now, data]);
 
+  // 무한 스크롤: 위/아래 sentinel이 보이면 자동으로 블록 추가
+  useEffect(() => {
+    const top = sentinelTopRef.current;
+    const bottom = sentinelBottomRef.current;
+    if (!top || !bottom) return;
+    const obs = new IntersectionObserver((entries) => {
+      entries.forEach((e) => {
+        if (!e.isIntersecting) return;
+        if (e.target === top) setBlocksBack((b) => b + 1);
+        if (e.target === bottom) setBlocksAhead((a) => a + 1);
+      });
+    }, { rootMargin: "200px" });
+    obs.observe(top);
+    obs.observe(bottom);
+    return () => obs.disconnect();
+  }, [loaded]);
+
   const todayKey = fmtKey(new Date());
   const projOf = (pid) => projects.find((p) => p.id === pid);
 
@@ -110,7 +135,7 @@ export default function Scheduler() {
   }
 
   const blocks = [];
-  for (let i = -blocksBack; i < BLOCKS_AHEAD; i++) {
+  for (let i = -blocksBack; i < blocksAhead; i++) {
     blocks.push(addDays(baseAnchor, i * 14));
   }
 
@@ -133,6 +158,8 @@ export default function Scheduler() {
           <h1 style={S.title}>스케줄러</h1>
         </div>
         <div style={S.nav}>
+          <button style={S.todayBtn} onClick={() => setBaseAnchor(startOfWeekMon(new Date()))}>오늘</button>
+          <button style={S.navBtn} onClick={() => setShowJump(true)} title="날짜로 점프"><Calendar size={17} /></button>
           <button style={S.navBtn} onClick={() => setShowProj(true)} title="프로젝트 관리">
             <Settings size={17} />
           </button>
@@ -148,7 +175,7 @@ export default function Scheduler() {
         ))}
       </div>
 
-      <button style={S.loadMore} onClick={() => setBlocksBack(blocksBack + 1)}>↑ 지난 2주 더 보기</button>
+      <div ref={sentinelTopRef} style={S.sentinel}>↑ 지난 일정 불러오는 중…</div>
 
       {blocks.map((blockStart) => {
         const days = Array.from({ length: 14 }, (_, i) => addDays(blockStart, i));
@@ -191,7 +218,21 @@ export default function Scheduler() {
         );
       })}
 
-      <p style={S.foot}>아래로 스크롤하면 다음 2주가 이어집니다. 각 2주 안에서는 좌우로 넘겨보세요. 날짜 숫자를 누르면 그 하루만 크게 볼 수 있어요.</p>
+      <div ref={sentinelBottomRef} style={S.sentinel}>↓ 다음 일정 불러오는 중…</div>
+
+      <p style={S.foot}>위/아래로 스크롤하면 자동으로 이어집니다. 각 2주 안에서는 좌우로 넘겨보세요. 날짜 숫자를 누르면 그 하루만 크게 볼 수 있어요.</p>
+
+      {showJump && (
+        <JumpModal currentAnchor={baseAnchor} onClose={() => setShowJump(false)}
+          onJump={(target) => {
+            const newAnchor = startOfWeekMon(target);
+            setBaseAnchor(newAnchor);
+            setBlocksBack(1);
+            setBlocksAhead(3);
+            setShowJump(false);
+            setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 50);
+          }} />
+      )}
 
       {showProj && <ProjectManager projects={projects} setProjects={persistProj} onClose={() => setShowProj(false)} />}
 
@@ -286,6 +327,43 @@ function DayView({ dateKey, items, projOf, projects, addRow, editRow, delRow, as
   );
 }
 
+function JumpModal({ currentAnchor, onClose, onJump }) {
+  const [year, setYear] = useState(currentAnchor.getFullYear());
+  const [month, setMonth] = useState(currentAnchor.getMonth() + 1);
+  const thisYear = new Date().getFullYear();
+  const years = [];
+  for (let y = thisYear - 5; y <= thisYear + 15; y++) years.push(y);
+  return (
+    <div style={JM.overlay} onClick={onClose}>
+      <div style={JM.modal} onClick={(e) => e.stopPropagation()}>
+        <div style={JM.head}>
+          <h2 style={JM.title}>날짜로 이동</h2>
+          <button style={JM.x} onClick={onClose}><X size={20} /></button>
+        </div>
+        <div style={JM.row}>
+          <label style={JM.label}>년도</label>
+          <select value={year} onChange={(e) => setYear(Number(e.target.value))} style={JM.sel}>
+            {years.map((y) => <option key={y} value={y}>{y}년</option>)}
+          </select>
+        </div>
+        <div style={JM.row}>
+          <label style={JM.label}>월</label>
+          <div style={JM.months}>
+            {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+              <button key={m} onClick={() => setMonth(m)}
+                style={{ ...JM.mBtn, ...(month === m ? JM.mBtnOn : {}) }}>{m}월</button>
+            ))}
+          </div>
+        </div>
+        <div style={JM.footer}>
+          <button style={JM.cancel} onClick={onClose}>취소</button>
+          <button style={JM.go} onClick={() => onJump(new Date(year, month - 1, 1))}>이동</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ProjectManager({ projects, setProjects, onClose }) {
   const [list, setList] = useState(projects);
   const save = () => { setProjects(list.filter((p) => p.code.trim())); onClose(); };
@@ -338,7 +416,8 @@ const S = {
   legendItem: { display: "flex", alignItems: "center", gap: 5 },
   legendChip: { minWidth: 22, height: 20, padding: "0 5px", borderRadius: 5, fontSize: 11, fontWeight: 700, display: "grid", placeItems: "center" },
   legendName: { fontSize: 12, color: "#666" },
-  loadMore: { display: "block", margin: "0 auto 14px", padding: "7px 18px", borderRadius: 10, border: `1px solid ${BORDER}`, background: "#fff", color: "#888", cursor: "pointer", fontSize: 12.5, fontFamily: "inherit" },
+  todayBtn: { padding: "7px 14px", borderRadius: 10, border: `1px solid ${BORDER}`, background: "#fff", color: "#444", cursor: "pointer", fontSize: 13, fontFamily: "inherit" },
+  sentinel: { textAlign: "center", padding: "12px 0", fontSize: 11.5, color: "#bbb", fontFamily: "inherit" },
   block: { marginBottom: 26 },
   blockHead: { display: "flex", alignItems: "center", gap: 10, marginBottom: 8, paddingBottom: 6, borderBottom: `1px solid ${BORDER}` },
   blockLabel: { fontFamily: "'Fraunces', serif", fontSize: 16, color: "#555" },
@@ -402,4 +481,21 @@ const MS = {
   footer: { display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 18 },
   cancel: { padding: "9px 18px", borderRadius: 10, border: `1px solid ${BORDER}`, background: "#fff", color: "#444", cursor: "pointer", fontFamily: "inherit", fontSize: 14 },
   save: { padding: "9px 20px", borderRadius: 10, border: "none", background: "#2a2a2a", color: "#fff", cursor: "pointer", fontFamily: "inherit", fontSize: 14 },
+};
+
+const JM = {
+  overlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,.35)", display: "grid", placeItems: "center", zIndex: 95, padding: 16 },
+  modal: { width: "100%", maxWidth: 380, background: "#fff", borderRadius: 18, padding: "22px 22px 18px", fontFamily: "'Gowun Dodum', sans-serif", border: `1px solid ${BORDER}` },
+  head: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 },
+  title: { fontFamily: "'Fraunces', serif", fontSize: 20, margin: 0, color: "#2a2a2a" },
+  x: { border: "none", background: "transparent", color: "#999", cursor: "pointer" },
+  row: { marginBottom: 14 },
+  label: { display: "block", fontSize: 12, color: "#888", marginBottom: 6 },
+  sel: { width: "100%", height: 36, borderRadius: 9, border: `1px solid ${BORDER}`, padding: "0 10px", background: "#fff", fontFamily: "inherit", fontSize: 14, color: "#333" },
+  months: { display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6 },
+  mBtn: { padding: "8px 0", borderRadius: 8, border: `1px solid ${BORDER}`, background: "#fff", color: "#555", cursor: "pointer", fontSize: 13, fontFamily: "inherit" },
+  mBtnOn: { background: "#2a2a2a", color: "#fff", border: "1px solid #2a2a2a" },
+  footer: { display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 14 },
+  cancel: { padding: "9px 18px", borderRadius: 10, border: `1px solid ${BORDER}`, background: "#fff", color: "#444", cursor: "pointer", fontFamily: "inherit", fontSize: 14 },
+  go: { padding: "9px 22px", borderRadius: 10, border: "none", background: "#2a2a2a", color: "#fff", cursor: "pointer", fontFamily: "inherit", fontSize: 14 },
 };
