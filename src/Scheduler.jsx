@@ -453,28 +453,45 @@ function TaskRow({ it, k, projOf, projects, pickerFor, setPickerFor, editRow, de
           {it.done && <Check size={11} />}
         </button>
         {it.alarm ? (
-          <label style={{ ...S.alarm, ...S.alarmOn }}>
+          <div style={{ ...S.alarm, ...S.alarmOn, position: "relative" }}>
             <Bell size={11} />
-            <input type="time" value={it.alarm} style={S.time}
-              onChange={(e) => { editRow(k, it.id, { alarm: e.target.value }); askNotif(); }} />
+            <button style={S.alarmTimeBtn}
+              onClick={() => setPickerFor({ key: k, id: it.id, kind: "time" })}>
+              {it.alarm}
+            </button>
             <span role="button" tabIndex={0}
               onMouseDown={(e) => e.preventDefault()}
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); editRow(k, it.id, { alarm: "" }); }}
               style={S.alarmClear} title="알람 시간 지우기"><X size={10} /></span>
-          </label>
+            {pickerFor && pickerFor.key === k && pickerFor.id === it.id && pickerFor.kind === "time" && (
+              <TimePicker
+                value={it.alarm}
+                onPick={(v) => { editRow(k, it.id, { alarm: v }); askNotif(); setPickerFor(null); }}
+                onClose={() => setPickerFor(null)}
+              />
+            )}
+          </div>
         ) : (
-          <label style={S.alarmEmpty} title="알람 시간 설정">
-            <Bell size={11} />
-            <span style={{ fontSize: 11, color: "#bbb" }}>시간</span>
-            <input type="time" value=""
-              onChange={(e) => { if (e.target.value) { editRow(k, it.id, { alarm: e.target.value }); askNotif(); } }}
-              style={{ position: "absolute", opacity: 0, width: "100%", height: "100%", left: 0, top: 0, cursor: "pointer" }} />
-          </label>
+          <div style={{ ...S.alarmEmpty, position: "relative" }}>
+            <button style={S.alarmEmptyBtn}
+              onClick={() => { setPickerFor({ key: k, id: it.id, kind: "time" }); askNotif(); }}
+              title="알람 시간 설정">
+              <Bell size={11} />
+              <span style={{ fontSize: 11, color: "#bbb" }}>시간</span>
+            </button>
+            {pickerFor && pickerFor.key === k && pickerFor.id === it.id && pickerFor.kind === "time" && (
+              <TimePicker
+                value=""
+                onPick={(v) => { editRow(k, it.id, { alarm: v }); setPickerFor(null); }}
+                onClose={() => setPickerFor(null)}
+              />
+            )}
+          </div>
         )}
         <button style={S.del} onClick={() => delRow(k, it.id)}><X size={13} /></button>
       </div>
 
-      {pickerFor && pickerFor.key === k && pickerFor.id === it.id && (
+      {pickerFor && pickerFor.key === k && pickerFor.id === it.id && pickerFor.kind !== "time" && (
         <div style={S.picker}>
           {projects.map((pp) => (
             <button key={pp.id} style={{ ...S.pickItem, background: pp.color, color: isLight(pp.color) ? "#333" : "#fff" }}
@@ -498,6 +515,44 @@ function TaskRow({ it, k, projOf, projects, pickerFor, setPickerFor, editRow, de
           editRow(k, it.id, { text: e.target.value });
         }}
       />
+    </div>
+  );
+}
+
+function TimePicker({ value, onPick, onClose }) {
+  const init = value && value.includes(":") ? value.split(":") : ["09", "00"];
+  const [hh, setHh] = useState(init[0]);
+  const [mm, setMm] = useState(init[1]);
+  // 바깥 클릭 시 닫기
+  useEffect(() => {
+    const onDown = (e) => {
+      const el = document.getElementById("tp-popover");
+      if (el && !el.contains(e.target)) onClose();
+    };
+    setTimeout(() => document.addEventListener("mousedown", onDown), 0);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [onClose]);
+  const hours = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, "0"));
+  const mins = ["00", "05", "10", "15", "20", "25", "30", "35", "40", "45", "50", "55"];
+  return (
+    <div id="tp-popover" style={TP.pop}>
+      <div style={TP.cols}>
+        <div style={TP.col}>
+          {hours.map((h) => (
+            <button key={h} style={{ ...TP.cell, ...(h === hh ? TP.cellOn : {}) }} onClick={() => setHh(h)}>{h}</button>
+          ))}
+        </div>
+        <div style={TP.sep}>:</div>
+        <div style={TP.col}>
+          {mins.map((m) => (
+            <button key={m} style={{ ...TP.cell, ...(m === mm ? TP.cellOn : {}) }} onClick={() => setMm(m)}>{m}</button>
+          ))}
+        </div>
+      </div>
+      <div style={TP.foot}>
+        <button style={TP.cancel} onClick={onClose}>취소</button>
+        <button style={TP.ok} onClick={() => onPick(`${hh}:${mm}`)}>확인</button>
+      </div>
     </div>
   );
 }
@@ -808,4 +863,19 @@ const MV = {
   miniChip: { minWidth: 16, height: 14, padding: "0 3px", borderRadius: 0, fontSize: 9, fontWeight: 700, display: "grid", placeItems: "center", flexShrink: 0 },
   miniText: { color: "#3a3a3a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
   more: { fontSize: 10, color: "#999", marginTop: 1 },
+};
+
+S.alarmTimeBtn = { border: "none", background: "transparent", color: "inherit", fontSize: 12, fontFamily: "inherit", cursor: "pointer", padding: "0 2px", lineHeight: 1 };
+S.alarmEmptyBtn = { display: "inline-flex", alignItems: "center", gap: 4, border: "none", background: "transparent", color: "#bbb", cursor: "pointer", fontFamily: "inherit", padding: 0, width: "100%" };
+
+const TP = {
+  pop: { position: "absolute", top: "calc(100% + 4px)", right: 0, zIndex: 80, background: "#fff", border: `1px solid ${BORDER}`, padding: 8, width: 170, boxShadow: "0 4px 12px rgba(0,0,0,0.08)" },
+  cols: { display: "flex", gap: 4, alignItems: "stretch" },
+  col: { flex: 1, maxHeight: 160, overflowY: "auto", display: "flex", flexDirection: "column", gap: 2 },
+  sep: { fontSize: 14, fontWeight: 700, alignSelf: "center", color: "#999" },
+  cell: { padding: "4px 0", border: "none", background: "transparent", color: "#444", fontSize: 12, cursor: "pointer", fontFamily: "inherit" },
+  cellOn: { background: "#2a2a2a", color: "#fff" },
+  foot: { display: "flex", justifyContent: "flex-end", gap: 6, marginTop: 8 },
+  cancel: { padding: "5px 10px", border: `1px solid ${BORDER}`, background: "#fff", color: "#666", cursor: "pointer", fontFamily: "inherit", fontSize: 12 },
+  ok: { padding: "5px 14px", border: "none", background: "#2a2a2a", color: "#fff", cursor: "pointer", fontFamily: "inherit", fontSize: 12 },
 };
