@@ -21,15 +21,18 @@ const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); r
 const uid = () => Math.random().toString(36).slice(2, 9);
 
 const DEFAULT_PROJECTS = [
-  { id: "p", code: "p", name: "프로젝트 P", color: "#4a90e2" },
-  { id: "g", code: "g", name: "프로젝트 G", color: "#9acd5b" },
-  { id: "n", code: "n", name: "프로젝트 N", color: "#f0a08a" },
-  { id: "wd", code: "wd", name: "프로젝트 WD", color: "#2e8b57" },
-  { id: "e", code: "e", name: "프로젝트 E", color: "#a8d4f0" },
-  { id: "pe", code: "폐", name: "폐기", color: "#2c3e6b" },
+  { id: "p", code: "p", name: "프로젝트 P", color: "#2DAEDC" },
+  { id: "g", code: "g", name: "프로젝트 G", color: "#7BC53E" },
+  { id: "n", code: "n", name: "프로젝트 N", color: "#F5A03C" },
+  { id: "wd", code: "wd", name: "프로젝트 WD", color: "#1E9D5A" },
+  { id: "e", code: "e", name: "프로젝트 E", color: "#A4DCEE" },
+  { id: "pe", code: "폐", name: "폐기", color: "#1A1A1A" },
 ];
-const PALETTE = ["#4a90e2", "#9acd5b", "#f0a08a", "#2e8b57", "#a8d4f0", "#2c3e6b",
-  "#e2725b", "#d4a017", "#9b59b6", "#16a085", "#c0392b", "#34495e", "#e84393", "#7f8c8d"];
+const PALETTE = [
+  "#FFFFFF", "#1A1A1A", "#8B5A3C", "#F8D4DC", "#EE4D8E", "#D8298E",
+  "#1E9D5A", "#1FAA9A", "#A4DCEE", "#2DAEDC", "#2257C4", "#9B6CD4",
+  "#7BC53E", "#D5DC22", "#FFCC22", "#F5A03C", "#EE6755", "#E73828",
+];
 
 const isLight = (hex) => {
   const c = hex.replace("#", "");
@@ -575,8 +578,13 @@ function ProjectManager({ projects, setProjects, onClose }) {
               <div style={MS.swatches}>
                 {PALETTE.map((c) => (
                   <button key={c} onClick={() => edit(p.id, { color: c })}
-                    style={{ ...MS.sw, background: c, outline: p.color === c ? "2px solid #555" : "none", outlineOffset: 1 }} />
+                    style={{ ...MS.sw, background: c, outline: p.color === c ? "2px solid #555" : "none", outlineOffset: 1, border: c === "#FFFFFF" ? "0.5px solid #ddd" : "none" }} />
                 ))}
+                <label style={MS.picker} title="직접 색 고르기">
+                  <input type="color" value={p.color} onChange={(e) => edit(p.id, { color: e.target.value })}
+                    style={{ position: "absolute", inset: 0, opacity: 0, cursor: "pointer", width: "100%", height: "100%" }} />
+                  <Plus size={11} />
+                </label>
               </div>
               <button style={MS.del} onClick={() => del(p.id)}><X size={16} /></button>
             </div>
@@ -664,8 +672,9 @@ const MS = {
   row: { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" },
   codeIn: { width: 52, height: 34, borderRadius: 0, border: "none", textAlign: "center", fontSize: 13, fontWeight: 700, fontFamily: "inherit", outline: "none" },
   nameIn: { flex: 1, minWidth: 110, height: 34, borderRadius: 0, border: `1px solid ${BORDER}`, padding: "0 10px", fontSize: 14, fontFamily: "inherit", outline: "none", background: "#fff" },
-  swatches: { display: "flex", gap: 3, flexWrap: "wrap", maxWidth: 200 },
-  sw: { width: 18, height: 18, borderRadius: 0, border: "none", cursor: "pointer", padding: 0 },
+  swatches: { display: "flex", gap: 4, flexWrap: "wrap", maxWidth: 260 },
+  sw: { width: 20, height: 20, borderRadius: 0, border: "none", cursor: "pointer", padding: 0 },
+  picker: { position: "relative", width: 20, height: 20, border: "1px dashed #bbb", display: "grid", placeItems: "center", color: "#888", cursor: "pointer", background: "#fff" },
   del: { width: 30, height: 30, borderRadius: 0, border: `1px solid ${BORDER}`, background: "#fff", color: "#999", cursor: "pointer", display: "grid", placeItems: "center" },
   addP: { marginTop: 14, width: "100%", padding: "10px", borderRadius: 0, border: `1.5px dashed ${BORDER}`, background: "transparent", color: "#999", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 5, fontSize: 13.5, fontFamily: "inherit" },
   footer: { display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 18 },
