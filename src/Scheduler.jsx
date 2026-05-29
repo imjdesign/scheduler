@@ -532,7 +532,7 @@ const S = {
   checkOn: { background: "#7a9a5b", border: "2px solid #7a9a5b" },
   alarm: { display: "inline-flex", alignItems: "center", gap: 2, marginLeft: "auto", padding: "2px 5px", borderRadius: 6, border: `1px solid ${BORDER}`, background: "#fff", color: "#bbb", flexShrink: 0 },
   alarmOn: { color: "#c0613f", borderColor: "#e7b79c", background: "#fff" },
-  time: { border: "none", background: "transparent", fontSize: 11, color: "inherit", outline: "none", width: 52, fontFamily: "inherit" },
+  time: { border: "none", background: "transparent", fontSize: 12, color: "inherit", outline: "none", width: 78, fontFamily: "inherit" },
   del: { width: 20, height: 20, borderRadius: 5, border: "none", background: "transparent", color: "#ccc", cursor: "pointer", display: "grid", placeItems: "center", flexShrink: 0 },
   picker: { position: "absolute", zIndex: 20, top: 30, left: 6, background: "#fff", border: `1px solid ${BORDER}`, borderRadius: 9, padding: 7, display: "flex", flexWrap: "wrap", gap: 5, width: 150, boxShadow: "0 8px 22px rgba(0,0,0,.12)" },
   pickItem: { minWidth: 26, height: 24, padding: "0 6px", borderRadius: 5, fontSize: 11, fontWeight: 700, border: "none", cursor: "pointer" },

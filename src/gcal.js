@@ -129,7 +129,7 @@ export async function addEvent({ dateKey, alarmHHMM, text }) {
   const [y, m, d] = dateKey.split("-").map(Number);
   const [hh, mm] = alarmHHMM.split(":").map(Number);
   const start = new Date(y, m - 1, d, hh, mm);
-  const end = new Date(start.getTime() + 30 * 60 * 1000); // 30분 이벤트
+  const end = new Date(start.getTime() + 5 * 60 * 1000); // 5분 이벤트
   const event = {
     summary: text || "(스케줄러 알림)",
     description: "스케줄러에서 자동 추가됨",
@@ -149,7 +149,7 @@ export async function updateEvent(eventId, { dateKey, alarmHHMM, text }) {
   const [y, m, d] = dateKey.split("-").map(Number);
   const [hh, mm] = alarmHHMM.split(":").map(Number);
   const start = new Date(y, m - 1, d, hh, mm);
-  const end = new Date(start.getTime() + 30 * 60 * 1000);
+  const end = new Date(start.getTime() + 5 * 60 * 1000);
   const event = {
     summary: text || "(스케줄러 알림)",
     start: { dateTime: start.toISOString(), timeZone: "Asia/Seoul" },
