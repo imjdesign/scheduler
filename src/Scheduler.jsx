@@ -517,7 +517,7 @@ const S = {
   nowTag: { fontSize: 11, background: "#2a2a2a", color: "#fff", padding: "3px 9px", borderRadius: 7 },
   scroll: { overflowX: "auto", paddingBottom: 8 },
   cols: { display: "flex", gap: 9, minWidth: "min-content" },
-  col: { width: 180, flexShrink: 0, background: "#fff", border: `1px solid ${BORDER}`, borderRadius: 13, overflow: "hidden", display: "flex", flexDirection: "column" },
+  col: { width: 230, flexShrink: 0, background: "#fff", border: `1px solid ${BORDER}`, borderRadius: 13, overflow: "hidden", display: "flex", flexDirection: "column" },
   colToday: { border: "1.5px solid #c0613f" },
   colHead: { display: "flex", alignItems: "baseline", gap: 5, padding: "8px 10px", background: "#fff", borderBottomWidth: 1, borderBottomStyle: "solid", borderBottomColor: BORDER, borderTop: "none", borderLeft: "none", borderRight: "none", cursor: "pointer", width: "100%", fontFamily: "inherit", textAlign: "left" },
   dow: { fontSize: 11.5 },
