@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { createPortal } from "react-dom";
 import { Plus, X, Bell, Check, Settings, ArrowLeft } from "lucide-react";
 import { loadDoc, saveDoc, subscribeDoc } from "./firebase.js";
 import { connect as gcalConnect, isConnected as gcalIsConnected, disconnect as gcalDisconnect, addEvent as gcalAdd, updateEvent as gcalUpdate, deleteEvent as gcalDelete } from "./gcal.js";
@@ -453,10 +454,10 @@ function TaskRow({ it, k, projOf, projects, pickerFor, setPickerFor, editRow, de
           {it.done && <Check size={11} />}
         </button>
         {it.alarm ? (
-          <div style={{ ...S.alarm, ...S.alarmOn, position: "relative" }}>
+          <div style={{ ...S.alarm, ...S.alarmOn }}>
             <Bell size={11} />
             <button style={S.alarmTimeBtn}
-              onClick={() => setPickerFor({ key: k, id: it.id, kind: "time" })}>
+              onClick={(e) => setPickerFor({ key: k, id: it.id, kind: "time", rect: e.currentTarget.getBoundingClientRect() })}>
               {it.alarm}
             </button>
             <span role="button" tabIndex={0}
@@ -466,15 +467,16 @@ function TaskRow({ it, k, projOf, projects, pickerFor, setPickerFor, editRow, de
             {pickerFor && pickerFor.key === k && pickerFor.id === it.id && pickerFor.kind === "time" && (
               <TimePicker
                 value={it.alarm}
+                anchorRect={pickerFor.rect}
                 onPick={(v) => { editRow(k, it.id, { alarm: v }); askNotif(); setPickerFor(null); }}
                 onClose={() => setPickerFor(null)}
               />
             )}
           </div>
         ) : (
-          <div style={{ ...S.alarmEmpty, position: "relative" }}>
+          <div style={S.alarmEmpty}>
             <button style={S.alarmEmptyBtn}
-              onClick={() => { setPickerFor({ key: k, id: it.id, kind: "time" }); askNotif(); }}
+              onClick={(e) => { setPickerFor({ key: k, id: it.id, kind: "time", rect: e.currentTarget.getBoundingClientRect() }); askNotif(); }}
               title="알람 시간 설정">
               <Bell size={11} />
               <span style={{ fontSize: 11, color: "#bbb" }}>시간</span>
@@ -482,6 +484,7 @@ function TaskRow({ it, k, projOf, projects, pickerFor, setPickerFor, editRow, de
             {pickerFor && pickerFor.key === k && pickerFor.id === it.id && pickerFor.kind === "time" && (
               <TimePicker
                 value=""
+                anchorRect={pickerFor.rect}
                 onPick={(v) => { editRow(k, it.id, { alarm: v }); setPickerFor(null); }}
                 onClose={() => setPickerFor(null)}
               />
@@ -526,8 +529,8 @@ function TaskRow({ it, k, projOf, projects, pickerFor, setPickerFor, editRow, de
   );
 }
 
-function TimePicker({ value, onPick, onClose }) {
-  const init = value && value.includes(":") ? value.split(":") : ["", ""];
+function TimePicker({ value, onPick, onClose, anchorRect }) {
+  const init = value && value.includes(":") ? value.split(":") : ["09", "00"];
   const [hh, setHh] = useState(init[0]);
   const [mm, setMm] = useState(init[1]);
   // 바깥 클릭 시 닫기
@@ -539,34 +542,37 @@ function TimePicker({ value, onPick, onClose }) {
     const t = setTimeout(() => document.addEventListener("mousedown", onDown), 0);
     return () => { clearTimeout(t); document.removeEventListener("mousedown", onDown); };
   }, [onClose]);
-  // 시·분 둘 다 골라지는 순간 자동 적용
-  useEffect(() => {
-    if (hh && mm) onPick(`${hh}:${mm}`);
-  }, [hh, mm]); // eslint-disable-line
 
   const hours = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, "0"));
   const mins = ["00", "05", "10", "15", "20", "25", "30", "35", "40", "45", "50", "55"];
 
-  return (
-    <div id="tp-popover" style={TP.pop}>
-      <div style={TP.section}>
-        <div style={TP.lbl}>시</div>
-        <div style={TP.gridH}>
+  // 앵커 위치를 기준으로 화면 좌표 계산 (Portal로 body에 띄움)
+  const top = anchorRect ? anchorRect.bottom + 4 : 100;
+  const right = anchorRect ? Math.max(8, window.innerWidth - anchorRect.right) : 8;
+
+  const popover = (
+    <div id="tp-popover" style={{ ...TP.pop, top, right }}>
+      <div style={TP.cols}>
+        <div style={TP.col}>
           {hours.map((v) => (
             <button key={v} style={{ ...TP.cell, ...(v === hh ? TP.cellOn : {}) }} onClick={() => setHh(v)}>{v}</button>
           ))}
         </div>
-      </div>
-      <div style={TP.section}>
-        <div style={TP.lbl}>분</div>
-        <div style={TP.gridM}>
+        <div style={TP.sep}>:</div>
+        <div style={TP.col}>
           {mins.map((v) => (
             <button key={v} style={{ ...TP.cell, ...(v === mm ? TP.cellOn : {}) }} onClick={() => setMm(v)}>{v}</button>
           ))}
         </div>
       </div>
+      <div style={TP.foot}>
+        <button style={TP.cancel} onClick={onClose}>취소</button>
+        <button style={TP.ok} onClick={() => onPick(`${hh}:${mm}`)}>확인</button>
+      </div>
     </div>
   );
+
+  return createPortal(popover, document.body);
 }
 
 function MonthView({ monthAnchor, setMonthAnchor, data, projOf, todayKey, holidays, onDayClick }) {
@@ -881,11 +887,13 @@ S.alarmTimeBtn = { border: "none", background: "transparent", color: "inherit", 
 S.alarmEmptyBtn = { display: "inline-flex", alignItems: "center", gap: 4, border: "none", background: "transparent", color: "#bbb", cursor: "pointer", fontFamily: "inherit", padding: 0, width: "100%" };
 
 const TP = {
-  pop: { position: "absolute", top: "calc(100% + 4px)", right: 0, zIndex: 80, background: "#fff", border: `1px solid ${BORDER}`, padding: 10, width: 220, boxShadow: "0 4px 12px rgba(0,0,0,0.08)" },
-  section: { marginBottom: 8 },
-  lbl: { fontSize: 11, color: "#999", marginBottom: 4, fontWeight: 600 },
-  gridH: { display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 2 },
-  gridM: { display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 2 },
-  cell: { padding: "5px 0", border: "none", background: "#f5f5f5", color: "#444", fontSize: 12, cursor: "pointer", fontFamily: "inherit", borderRadius: 0 },
+  pop: { position: "fixed", zIndex: 200, background: "#fff", border: `1px solid ${BORDER}`, padding: 10, width: 180, boxShadow: "0 6px 20px rgba(0,0,0,0.12)" },
+  cols: { display: "flex", gap: 6, alignItems: "stretch" },
+  col: { flex: 1, maxHeight: 200, overflowY: "auto", display: "flex", flexDirection: "column", gap: 2, border: `1px solid #eee` },
+  sep: { fontSize: 16, fontWeight: 700, alignSelf: "center", color: "#999" },
+  cell: { padding: "6px 0", border: "none", background: "transparent", color: "#444", fontSize: 13, cursor: "pointer", fontFamily: "inherit", borderRadius: 0 },
   cellOn: { background: "#2a2a2a", color: "#fff" },
+  foot: { display: "flex", justifyContent: "flex-end", gap: 6, marginTop: 10 },
+  cancel: { padding: "6px 12px", border: `1px solid ${BORDER}`, background: "#fff", color: "#666", cursor: "pointer", fontFamily: "inherit", fontSize: 12, borderRadius: 0 },
+  ok: { padding: "6px 16px", border: "none", background: "#2a2a2a", color: "#fff", cursor: "pointer", fontFamily: "inherit", fontSize: 12, borderRadius: 0 },
 };
