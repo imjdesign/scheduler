@@ -161,6 +161,35 @@ export default function Scheduler() {
     return () => obs.disconnect();
   }, [loaded]);
 
+  // 창을 닫거나 탭을 떠날 때, 보류 중인 캘린더 동기화를 즉시 실행
+  useEffect(() => {
+    const flush = () => {
+      const timers = syncTimers.current;
+      Object.entries(timers).forEach(([k, tid]) => {
+        clearTimeout(tid);
+        delete timers[k];
+        // 즉시 실행 (sendBeacon 같은 보장은 어렵지만, 토큰 살아있으면 보통 잘 감)
+        const [key, id] = k.split("-");
+        const itemsNow = (dataRef.current[key] || []);
+        const current = itemsNow.find((it) => it.id === id);
+        if (current) {
+          const before = lastSentState.current[k] || null;
+          // fire-and-forget
+          syncGcal(key, before, current).catch(() => {});
+        }
+      });
+    };
+    const onVisibility = () => { if (document.visibilityState === "hidden") flush(); };
+    window.addEventListener("pagehide", flush);
+    window.addEventListener("beforeunload", flush);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.removeEventListener("pagehide", flush);
+      window.removeEventListener("beforeunload", flush);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, []);
+
   const todayKey = fmtKey(new Date());
   const projOf = (pid) => projects.find((p) => p.id === pid);
 
@@ -222,7 +251,7 @@ export default function Scheduler() {
       } else {
         lastSentState.current[k] = current;
       }
-    }, 1500);
+    }, 1000);
   };
 
   const editRow = (key, id, patch) => {
