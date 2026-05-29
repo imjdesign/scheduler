@@ -66,6 +66,8 @@ export default function Scheduler() {
   const [holidays, setHolidays] = useState({}); // { "2026-05-05": "어린이날", ... }
   const sentinelTopRef = useRef(null);
   const sentinelBottomRef = useRef(null);
+  const dataRef = useRef(data);
+  useEffect(() => { dataRef.current = data; }, [data]);
 
   // 초기 캘린더 연결 상태 확인
   useEffect(() => { setGcalLinked(gcalIsConnected()); }, []);
@@ -195,23 +197,55 @@ export default function Scheduler() {
     }
   };
 
-  const editRow = async (key, id, patch) => {
+  // 캘린더 동기화 디바운스 — 같은 줄을 빠르게 여러 번 수정하면 마지막에 한 번만 캘린더로 보냄
+  const syncTimers = useRef({});      // { "key-id": timeoutId }
+  const lastSentState = useRef({});   // { "key-id": 마지막으로 캘린더에 보낸 항목 스냅샷 }
+
+  const scheduleSync = (key, id) => {
+    const k = `${key}-${id}`;
+    // 기존 예약 취소
+    if (syncTimers.current[k]) clearTimeout(syncTimers.current[k]);
+    syncTimers.current[k] = setTimeout(async () => {
+      delete syncTimers.current[k];
+      // 디바운스 만료 시점의 최신 데이터를 다시 읽어옴
+      const itemsNow = (dataRef.current[key] || []);
+      const current = itemsNow.find((it) => it.id === id);
+      if (!current) return;
+      const before = lastSentState.current[k] || null;
+      const gcalId = await syncGcal(key, before, current);
+      // 새로 받은 gcalId로 데이터를 다시 한 번 업데이트
+      if (gcalId !== current.gcalId) {
+        const next = { ...current, gcalId: gcalId || "" };
+        persist({ ...dataRef.current, [key]: itemsNow.map((it) => it.id === id ? next : it) });
+        lastSentState.current[k] = next;
+      } else {
+        lastSentState.current[k] = current;
+      }
+    }, 1500);
+  };
+
+  const editRow = (key, id, patch) => {
     const items = data[key] || [];
     const before = items.find((it) => it.id === id);
     if (!before) return;
     const after = { ...before, ...patch, _fired: false };
-    // 캘린더에 미리 보내고 그 결과(gcalId)를 함께 저장
-    const gcalId = await syncGcal(key, before, after);
-    after.gcalId = gcalId || "";
     update(key, items.map((it) => (it.id === id ? after : it)));
+    // 알람 시간이나 글자가 바뀐 경우만 캘린더 동기화 예약
+    if (patch.alarm !== undefined || patch.text !== undefined) {
+      scheduleSync(key, id);
+    }
   };
 
   const delRow = async (key, id) => {
     const items = data[key] || [];
     const before = items.find((it) => it.id === id);
+    // 보류 중인 동기화 취소
+    const sk = `${key}-${id}`;
+    if (syncTimers.current[sk]) { clearTimeout(syncTimers.current[sk]); delete syncTimers.current[sk]; }
     if (before && before.gcalId && gcalIsConnected()) {
       try { await gcalDelete(before.gcalId); } catch (e) { console.warn(e); }
     }
+    delete lastSentState.current[sk];
     update(key, items.filter((it) => it.id !== id));
   };
 
@@ -420,8 +454,14 @@ function TaskRow({ it, k, projOf, projects, pickerFor, setPickerFor, editRow, de
         </button>
         <label style={{ ...S.alarm, ...(it.alarm ? S.alarmOn : {}) }}>
           <Bell size={11} />
-          <input type="time" value={it.alarm} style={S.time}
+          <input type="time" value={it.alarm || ""} style={S.time}
             onChange={(e) => { editRow(k, it.id, { alarm: e.target.value }); askNotif(); }} />
+          {it.alarm && (
+            <span role="button" tabIndex={0}
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); editRow(k, it.id, { alarm: "" }); }}
+              onMouseDown={(e) => e.preventDefault()}
+              style={S.alarmClear} title="알람 시간 지우기"><X size={10} /></span>
+          )}
         </label>
         <button style={S.del} onClick={() => delRow(k, it.id)}><X size={13} /></button>
       </div>
@@ -672,6 +712,7 @@ const S = {
   check: { width: 20, height: 20, borderRadius: 0, border: `2px solid ${BORDER}`, background: "#fff", cursor: "pointer", display: "grid", placeItems: "center", color: "#fff", flexShrink: 0 },
   checkOn: { background: "#7a9a5b", border: "2px solid #7a9a5b" },
   alarm: { display: "inline-flex", alignItems: "center", gap: 2, marginLeft: "auto", padding: "2px 5px", borderRadius: 0, border: `1px solid ${BORDER}`, background: "#fff", color: "#bbb", flexShrink: 0 },
+  alarmClear: { display: "inline-grid", placeItems: "center", width: 14, height: 14, marginLeft: 2, color: "#bbb", cursor: "pointer", borderRadius: 0 },
   alarmOn: { color: "#2563eb", borderColor: "#9bb6e8", background: "#fff" },
   time: { border: "none", background: "transparent", fontSize: 12, color: "inherit", outline: "none", width: 78, fontFamily: "inherit" },
   del: { width: 20, height: 20, borderRadius: 0, border: "none", background: "transparent", color: "#ccc", cursor: "pointer", display: "grid", placeItems: "center", flexShrink: 0 },
