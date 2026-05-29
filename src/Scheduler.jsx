@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Plus, X, Bell, Check, Settings, ArrowLeft } from "lucide-react";
+import { loadDoc, saveDoc, subscribeDoc } from "./firebase.js";
 
 const fmtKey = (d) => {
   const y = d.getFullYear();
@@ -60,24 +61,28 @@ export default function Scheduler() {
   useEffect(() => {
     (async () => {
       try {
-        const r = { value: localStorage.getItem("scheduler:data") };
-        if (r && r.value) setData(JSON.parse(r.value));
-      } catch (e) {}
+        const v = await loadDoc("data");
+        if (v) setData(v);
+      } catch (e) { console.error("data load failed", e); }
       try {
-        const p = { value: localStorage.getItem("scheduler:projects") };
-        if (p && p.value) setProjects(JSON.parse(p.value));
-      } catch (e) {}
+        const v = await loadDoc("projects");
+        if (v) setProjects(v);
+      } catch (e) { console.error("projects load failed", e); }
       setLoaded(true);
     })();
+    // 다른 기기에서 변경되면 자동 반영
+    const unsub1 = subscribeDoc("data", (v) => { if (v) setData(v); });
+    const unsub2 = subscribeDoc("projects", (v) => { if (v) setProjects(v); });
+    return () => { unsub1(); unsub2(); };
   }, []);
 
   const persist = useCallback(async (next) => {
     setData(next);
-    try { localStorage.setItem("scheduler:data", JSON.stringify(next)); } catch (e) {}
+    try { await saveDoc("data", next); } catch (e) { console.error("save failed", e); }
   }, []);
   const persistProj = useCallback(async (next) => {
     setProjects(next);
-    try { localStorage.setItem("scheduler:projects", JSON.stringify(next)); } catch (e) {}
+    try { await saveDoc("projects", next); } catch (e) { console.error("save failed", e); }
   }, []);
 
   useEffect(() => {
