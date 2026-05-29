@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { Plus, X, Bell, Check, Settings, ArrowLeft } from "lucide-react";
 import { loadDoc, saveDoc, subscribeDoc } from "./firebase.js";
 import { connect as gcalConnect, isConnected as gcalIsConnected, disconnect as gcalDisconnect, addEvent as gcalAdd, updateEvent as gcalUpdate, deleteEvent as gcalDelete } from "./gcal.js";
+import { loadHolidays } from "./holidays.js";
 
 const fmtKey = (d) => {
   const y = d.getFullYear();
@@ -62,12 +63,37 @@ export default function Scheduler() {
   const [viewMode, setViewMode] = useState("biweekly"); // "biweekly" | "monthly"
   const [monthAnchor, setMonthAnchor] = useState(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); });
   const [gcalLinked, setGcalLinked] = useState(false);
+  const [holidays, setHolidays] = useState({}); // { "2026-05-05": "어린이날", ... }
   const sentinelTopRef = useRef(null);
   const sentinelBottomRef = useRef(null);
-  const monthScrollRef = useRef(null);
 
   // 초기 캘린더 연결 상태 확인
   useEffect(() => { setGcalLinked(gcalIsConnected()); }, []);
+
+  // 화면에 보이는 기간(2주 모드: blocks 범위 + 월 모드: monthAnchor 전후)의 공휴일을 받아옴
+  useEffect(() => {
+    const months = new Set();
+    if (viewMode === "biweekly") {
+      // 2주 모드: 표시된 모든 블록의 시작/끝 달
+      for (let i = -blocksBack; i < blocksAhead; i++) {
+        const s = addDays(baseAnchor, i * 14);
+        const e = addDays(s, 13);
+        months.add(`${s.getFullYear()}-${String(s.getMonth() + 1).padStart(2, "0")}`);
+        months.add(`${e.getFullYear()}-${String(e.getMonth() + 1).padStart(2, "0")}`);
+      }
+    } else {
+      // 월 모드: 현재 달 + 앞뒤 1달
+      for (let off = -1; off <= 1; off++) {
+        const d = new Date(monthAnchor.getFullYear(), monthAnchor.getMonth() + off, 1);
+        months.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+      }
+    }
+    const list = Array.from(months).map((s) => {
+      const [y, m] = s.split("-");
+      return { year: y, month: m };
+    });
+    loadHolidays(list).then((map) => setHolidays((prev) => ({ ...prev, ...map })));
+  }, [viewMode, baseAnchor, blocksBack, blocksAhead, monthAnchor]);
 
   useEffect(() => {
     (async () => {
@@ -302,12 +328,15 @@ export default function Scheduler() {
                       const items = data[k] || [];
                       const isToday = k === todayKey;
                       const wend = d.getDay() === 0 || d.getDay() === 6;
+                      const holiday = holidays[k];
+                      const isRed = wend || !!holiday;
                       return (
                         <div key={k} style={{ ...S.col, ...(isToday ? S.colToday : {}) }}>
-                          <button className="dnum-btn" style={S.colHead} onClick={() => setDayView(k)} title="이 날 하루만 보기">
-                            <span style={{ ...S.dow, color: wend ? "#c0392b" : "#999" }}>{DOW[d.getDay()]}</span>
-                            <span style={{ ...S.dnum, ...(isToday ? { color: "#2563eb" } : {}) }}>{d.getDate()}</span>
+                          <button className="dnum-btn" style={S.colHead} onClick={() => setDayView(k)} title={holiday || "이 날 하루만 보기"}>
+                            <span style={{ ...S.dow, color: isRed ? "#c0392b" : "#999" }}>{DOW[d.getDay()]}</span>
+                            <span style={{ ...S.dnum, ...(isToday ? { color: "#2563eb" } : (holiday ? { color: "#c0392b" } : {})) }}>{d.getDate()}</span>
                             <span style={S.mon}>{d.getMonth() + 1}월</span>
+                            {holiday && <span style={S.holiday}>{holiday}</span>}
                           </button>
                           <div style={S.colBody}>
                             {items.map((it) => (
@@ -337,6 +366,7 @@ export default function Scheduler() {
           data={data}
           projOf={projOf}
           todayKey={todayKey}
+          holidays={holidays}
           onDayClick={(k) => setDayView(k)}
         />
       )}
@@ -424,7 +454,7 @@ function TaskRow({ it, k, projOf, projects, pickerFor, setPickerFor, editRow, de
   );
 }
 
-function MonthView({ monthAnchor, setMonthAnchor, data, projOf, todayKey, onDayClick }) {
+function MonthView({ monthAnchor, setMonthAnchor, data, projOf, todayKey, holidays, onDayClick }) {
   const year = monthAnchor.getFullYear();
   const month = monthAnchor.getMonth(); // 0-11
   const firstDay = new Date(year, month, 1);
@@ -466,9 +496,14 @@ function MonthView({ monthAnchor, setMonthAnchor, data, projOf, todayKey, onDayC
           const items = (data[k] || []).filter((it) => it.text.trim());
           const isToday = k === todayKey;
           const wend = d.getDay() === 0 || d.getDay() === 6;
+          const holiday = holidays && holidays[k];
+          const isRed = wend || !!holiday;
           return (
             <button key={k} style={{ ...MV.cell, ...(isToday ? MV.cellToday : {}) }} onClick={() => onDayClick(k)}>
-              <div style={{ ...MV.cellNum, color: isToday ? "#2563eb" : wend ? "#c0392b" : "#2a2a2a" }}>{d.getDate()}</div>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
+                <span style={{ ...MV.cellNum, color: isToday ? "#2563eb" : isRed ? "#c0392b" : "#2a2a2a" }}>{d.getDate()}</span>
+                {holiday && <span style={MV.cellHoliday}>{holiday}</span>}
+              </div>
               <div style={MV.cellTasks}>
                 {items.slice(0, 3).map((it) => {
                   const p = projOf(it.proj);
@@ -628,6 +663,7 @@ const S = {
   dow: { fontSize: 11.5 },
   dnum: { fontFamily: "'Inter', 'Pretendard', sans-serif", fontSize: 19, fontWeight: 700, letterSpacing: "-0.01em", color: "#2a2a2a" },
   mon: { fontSize: 10, color: "#aaa" },
+  holiday: { fontSize: 10, color: "#c0392b", marginLeft: 4, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 100 },
   colBody: { padding: 8, display: "flex", flexDirection: "column", gap: 7, minHeight: 110 },
   task: { position: "relative", background: "#fff", border: `1px solid ${BORDER}`, borderRadius: 0, padding: "6px 7px" },
   taskBig: { padding: "10px 12px", borderRadius: 0 },
@@ -716,6 +752,7 @@ const MV = {
   cellEmpty: { background: "#fafafa", cursor: "default", border: "1px solid #eee" },
   cellToday: { border: "1.5px solid #2563eb", background: "#eff5ff" },
   cellNum: { fontFamily: "'Inter', 'Pretendard', sans-serif", fontSize: 16, fontWeight: 700, letterSpacing: "-0.01em", lineHeight: 1 },
+  cellHoliday: { fontSize: 9.5, color: "#c0392b", fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", flex: 1, minWidth: 0 },
   cellTasks: { display: "flex", flexDirection: "column", gap: 2, overflow: "hidden" },
   taskMini: { display: "flex", alignItems: "center", gap: 3, fontSize: 11, lineHeight: 1.2, overflow: "hidden" },
   miniChip: { minWidth: 16, height: 14, padding: "0 3px", borderRadius: 0, fontSize: 9, fontWeight: 700, display: "grid", placeItems: "center", flexShrink: 0 },
