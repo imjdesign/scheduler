@@ -212,11 +212,9 @@ export default function Scheduler() {
         await gcalDelete(before.gcalId);
         return "";
       }
-      // 3) 알림이 있고 내용/시간이 바뀐 경우 → 수정
+      // 3) 알림이 있고 기존 gcalId가 있는 경우 → 항상 update (안전하게)
       if (hadAlarm && hasAlarm && before.gcalId) {
-        if (before.alarm !== after.alarm || before.text !== after.text) {
-          await gcalUpdate(before.gcalId, { dateKey: key, alarmHHMM: after.alarm, text: after.text });
-        }
+        await gcalUpdate(before.gcalId, { dateKey: key, alarmHHMM: after.alarm, text: after.text });
         return before.gcalId;
       }
       // 4) 변화 없음 (기존 gcalId 유지)
@@ -229,27 +227,34 @@ export default function Scheduler() {
 
   // 캘린더 동기화 디바운스 — 같은 줄을 빠르게 여러 번 수정하면 마지막에 한 번만 캘린더로 보냄
   const syncTimers = useRef({});      // { "key-id": timeoutId }
-  const lastSentState = useRef({});   // { "key-id": 마지막으로 캘린더에 보낸 항목 스냅샷 }
+  const lastSentState = useRef({});   // { "key-id": 마지막으로 캘린더에 보낸 항목 스냅샷 } — 백업용
 
   const scheduleSync = (key, id) => {
     const k = `${key}-${id}`;
-    // 기존 예약 취소
     if (syncTimers.current[k]) clearTimeout(syncTimers.current[k]);
     syncTimers.current[k] = setTimeout(async () => {
       delete syncTimers.current[k];
-      // 디바운스 만료 시점의 최신 데이터를 다시 읽어옴
       const itemsNow = (dataRef.current[key] || []);
       const current = itemsNow.find((it) => it.id === id);
       if (!current) return;
-      const before = lastSentState.current[k] || null;
+      // 기준점: 데이터에 저장된 gcalId가 있으면 이미 보낸 일정이라는 뜻
+      // before를 현재 데이터 기준으로 재구성 — gcalId만 그대로, 다른 필드는 lastSent로 보강
+      const lastSent = lastSentState.current[k];
+      const before = current.gcalId
+        ? {
+            gcalId: current.gcalId,
+            alarm: lastSent?.alarm ?? current.alarm,  // 마지막 보낸 시간이 있으면 그걸 비교 기준으로
+            text: lastSent?.text ?? current.text,
+          }
+        : null;
       const gcalId = await syncGcal(key, before, current);
-      // 새로 받은 gcalId로 데이터를 다시 한 번 업데이트
       if (gcalId !== current.gcalId) {
-        const next = { ...current, gcalId: gcalId || "" };
-        persist({ ...dataRef.current, [key]: itemsNow.map((it) => it.id === id ? next : it) });
-        lastSentState.current[k] = next;
+        const itemsLatest = (dataRef.current[key] || []);
+        const next = { ...itemsLatest.find((it) => it.id === id), gcalId: gcalId || "" };
+        persist({ ...dataRef.current, [key]: itemsLatest.map((it) => it.id === id ? next : it) });
+        lastSentState.current[k] = { alarm: current.alarm, text: current.text, gcalId: gcalId || "" };
       } else {
-        lastSentState.current[k] = current;
+        lastSentState.current[k] = { alarm: current.alarm, text: current.text, gcalId: current.gcalId };
       }
     }, 1000);
   };
