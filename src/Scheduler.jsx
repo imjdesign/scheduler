@@ -488,7 +488,14 @@ function TaskRow({ it, k, projOf, projects, pickerFor, setPickerFor, editRow, de
             )}
           </div>
         )}
-        <button style={S.del} onClick={() => delRow(k, it.id)}><X size={13} /></button>
+        <button style={S.del} onClick={() => delRow(k, it.id)} title="이 할 일 삭제">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="3 6 5 6 21 6" />
+            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+            <path d="M10 11v6" /><path d="M14 11v6" />
+            <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+          </svg>
+        </button>
       </div>
 
       {pickerFor && pickerFor.key === k && pickerFor.id === it.id && pickerFor.kind !== "time" && (
@@ -520,7 +527,7 @@ function TaskRow({ it, k, projOf, projects, pickerFor, setPickerFor, editRow, de
 }
 
 function TimePicker({ value, onPick, onClose }) {
-  const init = value && value.includes(":") ? value.split(":") : ["09", "00"];
+  const init = value && value.includes(":") ? value.split(":") : ["", ""];
   const [hh, setHh] = useState(init[0]);
   const [mm, setMm] = useState(init[1]);
   // 바깥 클릭 시 닫기
@@ -529,29 +536,34 @@ function TimePicker({ value, onPick, onClose }) {
       const el = document.getElementById("tp-popover");
       if (el && !el.contains(e.target)) onClose();
     };
-    setTimeout(() => document.addEventListener("mousedown", onDown), 0);
-    return () => document.removeEventListener("mousedown", onDown);
+    const t = setTimeout(() => document.addEventListener("mousedown", onDown), 0);
+    return () => { clearTimeout(t); document.removeEventListener("mousedown", onDown); };
   }, [onClose]);
+  // 시·분 둘 다 골라지는 순간 자동 적용
+  useEffect(() => {
+    if (hh && mm) onPick(`${hh}:${mm}`);
+  }, [hh, mm]); // eslint-disable-line
+
   const hours = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, "0"));
   const mins = ["00", "05", "10", "15", "20", "25", "30", "35", "40", "45", "50", "55"];
+
   return (
     <div id="tp-popover" style={TP.pop}>
-      <div style={TP.cols}>
-        <div style={TP.col}>
-          {hours.map((h) => (
-            <button key={h} style={{ ...TP.cell, ...(h === hh ? TP.cellOn : {}) }} onClick={() => setHh(h)}>{h}</button>
-          ))}
-        </div>
-        <div style={TP.sep}>:</div>
-        <div style={TP.col}>
-          {mins.map((m) => (
-            <button key={m} style={{ ...TP.cell, ...(m === mm ? TP.cellOn : {}) }} onClick={() => setMm(m)}>{m}</button>
+      <div style={TP.section}>
+        <div style={TP.lbl}>시</div>
+        <div style={TP.gridH}>
+          {hours.map((v) => (
+            <button key={v} style={{ ...TP.cell, ...(v === hh ? TP.cellOn : {}) }} onClick={() => setHh(v)}>{v}</button>
           ))}
         </div>
       </div>
-      <div style={TP.foot}>
-        <button style={TP.cancel} onClick={onClose}>취소</button>
-        <button style={TP.ok} onClick={() => onPick(`${hh}:${mm}`)}>확인</button>
+      <div style={TP.section}>
+        <div style={TP.lbl}>분</div>
+        <div style={TP.gridM}>
+          {mins.map((v) => (
+            <button key={v} style={{ ...TP.cell, ...(v === mm ? TP.cellOn : {}) }} onClick={() => setMm(v)}>{v}</button>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -869,13 +881,11 @@ S.alarmTimeBtn = { border: "none", background: "transparent", color: "inherit", 
 S.alarmEmptyBtn = { display: "inline-flex", alignItems: "center", gap: 4, border: "none", background: "transparent", color: "#bbb", cursor: "pointer", fontFamily: "inherit", padding: 0, width: "100%" };
 
 const TP = {
-  pop: { position: "absolute", top: "calc(100% + 4px)", right: 0, zIndex: 80, background: "#fff", border: `1px solid ${BORDER}`, padding: 8, width: 170, boxShadow: "0 4px 12px rgba(0,0,0,0.08)" },
-  cols: { display: "flex", gap: 4, alignItems: "stretch" },
-  col: { flex: 1, maxHeight: 160, overflowY: "auto", display: "flex", flexDirection: "column", gap: 2 },
-  sep: { fontSize: 14, fontWeight: 700, alignSelf: "center", color: "#999" },
-  cell: { padding: "4px 0", border: "none", background: "transparent", color: "#444", fontSize: 12, cursor: "pointer", fontFamily: "inherit" },
+  pop: { position: "absolute", top: "calc(100% + 4px)", right: 0, zIndex: 80, background: "#fff", border: `1px solid ${BORDER}`, padding: 10, width: 220, boxShadow: "0 4px 12px rgba(0,0,0,0.08)" },
+  section: { marginBottom: 8 },
+  lbl: { fontSize: 11, color: "#999", marginBottom: 4, fontWeight: 600 },
+  gridH: { display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 2 },
+  gridM: { display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 2 },
+  cell: { padding: "5px 0", border: "none", background: "#f5f5f5", color: "#444", fontSize: 12, cursor: "pointer", fontFamily: "inherit", borderRadius: 0 },
   cellOn: { background: "#2a2a2a", color: "#fff" },
-  foot: { display: "flex", justifyContent: "flex-end", gap: 6, marginTop: 8 },
-  cancel: { padding: "5px 10px", border: `1px solid ${BORDER}`, background: "#fff", color: "#666", cursor: "pointer", fontFamily: "inherit", fontSize: 12 },
-  ok: { padding: "5px 14px", border: "none", background: "#2a2a2a", color: "#fff", cursor: "pointer", fontFamily: "inherit", fontSize: 12 },
 };
