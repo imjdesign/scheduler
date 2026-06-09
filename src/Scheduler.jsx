@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import { Plus, X, Bell, Check, Settings, ArrowLeft } from "lucide-react";
 import { loadDoc, saveDoc, subscribeDoc } from "./firebase.js";
-import { connect as gcalConnect, isConnected as gcalIsConnected, disconnect as gcalDisconnect, addEvent as gcalAdd, updateEvent as gcalUpdate, deleteEvent as gcalDelete } from "./gcal.js";
+import { connect as gcalConnect, isConnected as gcalIsConnected, disconnect as gcalDisconnect, addEvent as gcalAdd, updateEvent as gcalUpdate, deleteEvent as gcalDelete, tryRestoreConnection as gcalRestore } from "./gcal.js";
 import { loadHolidays } from "./holidays.js";
 
 const fmtKey = (d) => {
@@ -71,7 +71,18 @@ export default function Scheduler() {
   useEffect(() => { dataRef.current = data; }, [data]);
 
   // 초기 캘린더 연결 상태 확인
-  useEffect(() => { setGcalLinked(gcalIsConnected()); }, []);
+  // 사이트 시작 시: 한 번이라도 연결한 적 있으면 백그라운드로 조용히 토큰 갱신
+  useEffect(() => {
+    (async () => {
+      setGcalLinked(gcalIsConnected()); // 일단 현재 상태로
+      try {
+        const ok = await gcalRestore();
+        setGcalLinked(ok || gcalIsConnected());
+      } catch {
+        setGcalLinked(gcalIsConnected());
+      }
+    })();
+  }, []);
 
   // 화면에 보이는 기간(2주 모드: blocks 범위 + 월 모드: monthAnchor 전후)의 공휴일을 받아옴
   useEffect(() => {
